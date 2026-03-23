@@ -1,0 +1,205 @@
+Final System Definition (Lean, Viable)
+
+Core Roles (do not expand yet)
+	•	Project Manager (PjM) → drives progress
+	•	Product Manager (PdM) → defines what and why to build
+	•	Lead Architect (LA) → defines how to build + integrates
+	•	Developers (Dev) → implement + write tests
+	•	Alignment & Validation Agent (AVA) → enforces truth
+
+⸻
+
+🧠 Role Responsibilities (non-overlapping, enforce this)
+
+Project Manager (PjM) — Control flow
+	•	owns milestones, deadlines, iteration limits
+	•	breaks work into tasks
+	•	decides when to stop iterating
+
+👉 PM = convergence pressure
+
+⸻
+
+Product Manager (PdM) — Source of truth (intent)
+	•	defines specs
+	•	maintains alignment with user intent
+	•	updates requirements when needed
+
+👉 Product = what + why
+
+⸻
+
+Lead Architect (LA) — System authority
+	•	defines architecture
+	•	reviews implementation
+	•	performs integration validation (explicit step)
+
+👉 Architect = how + system coherence
+
+⸻
+
+Developers (Dev) — Execution
+	•	implement features
+	•	write tests (unit + integration)
+	•	produce artifacts (code, docs)
+
+👉 Dev = build + self-test
+
+⸻
+
+Alignment & Validation Agent (AVA) — Hard gatekeeper (most critical role)
+
+This is NOT advisory.
+
+AVA must:
+
+1. Validate against spec
+	•	matches requirements
+	•	no missing functionality
+	•	no scope creep
+
+2. Validate against intent
+	•	detects drift from original goal
+	•	flags over-engineering or misalignment
+
+3. Validate test adequacy
+	•	tests exist
+	•	tests cover key requirements
+	•	rejects shallow or fake tests
+
+4. Make decisions
+	•	✅ Approve
+	•	❌ Reject (with precise delta)
+	•	⚠️ Escalate (unclear or conflicting intent)
+
+👉 AVA = cannot be bypassed
+
+⸻
+
+🔁 Execution Loop (this is your system)
+
+Every task follows this pipeline:
+Product → defines spec
+PM → creates task + assigns
+
+Architect → designs approach
+
+Developer → implements + writes tests
+
+Architect → integration check (mandatory step)
+
+AVA → validation gate
+    → approve → done
+    → reject → back to Dev
+    → escalate → PM/Product intervene
+
+
+⸻
+
+🚫 Non-Negotiable Rules (this is where systems fail)
+
+Rule 1 — No self-approval
+	•	Dev cannot approve their own work
+	•	Architect cannot bypass AVA
+	•	Product cannot override validation
+
+⸻
+
+Rule 2 — AVA is blocking
+	•	nothing is “done” without AVA approval
+	•	rejection must trigger rework
+
+⸻
+
+Rule 3 — Explicit integration step
+	•	Architect must validate system-level behavior
+	•	not just code correctness
+
+⸻
+
+Rule 4 — Iteration limits (PM enforced)
+	•	max retries per task (e.g. 3)
+	•	after that → escalate
+
+⸻
+
+Rule 5 — Clear termination condition
+
+Each task must define:
+	•	success criteria
+	•	completion signal
+
+Otherwise:
+👉 agents loop forever
+
+⸻
+
+⚠️ Known Failure Modes (watch these early)
+
+1. “Looks done” problem
+
+Fix: AVA strict rejection
+
+⸻
+
+2. Spec drift
+
+Fix: AVA challenges Product when needed
+
+⸻
+
+3. Integration illusion
+
+Fix: Architect must verify system actually runs
+
+⸻
+
+4. Infinite refinement
+
+Fix: PM enforces deadlines + iteration cap
+
+⸻
+
+🧩 Minimal System Architecture (don’t overbuild)
+
+Use:
+
+1. State Store (source of truth)
+	•	tasks
+	•	status
+	•	ownership
+
+2. Artifacts
+	•	code
+	•	markdown
+	•	specs
+
+3. Event triggers
+	•	task assigned
+	•	task completed
+	•	validation failed
+
+👉 Do NOT use MD files as coordination
+
+⸻
+
+🔥 Final Reality Check
+
+If you follow this strictly:
+
+✔ You will get a working autonomous dev system
+✔ It will produce usable code
+✔ It will scale with more agents later
+
+If you relax ANY of these:
+
+❌ AVA becomes weak → quality collapses
+❌ No integration step → system breaks
+❌ No iteration limit → infinite loops
+
+
+
+Use:
+	•	LangGraph → agent orchestration
+	•	Claude Code / Codex → dev execution
+	•	PostgreSQL → state store
