@@ -25,6 +25,7 @@ def _orm_to_project(orm: ProjectORM) -> Project:
         status=ProjectStatus(orm.status),
         active_task_id=orm.active_task_id,
         task_queue=task_queue,
+        paused=orm.paused,
     )
 
 
@@ -38,6 +39,7 @@ def _project_to_orm(project: Project) -> ProjectORM:
         status=project.status.value,
         active_task_id=project.active_task_id,
         task_queue=json.dumps([str(task_id) for task_id in project.task_queue]),
+        paused=project.paused,
     )
 
 
@@ -67,6 +69,7 @@ class PostgresProjectStore(ProjectStore):
             orm_project.status = flattened_project.status
             orm_project.active_task_id = flattened_project.active_task_id
             orm_project.task_queue = flattened_project.task_queue
+            orm_project.paused = flattened_project.paused
 
             session.commit()
             session.refresh(orm_project)

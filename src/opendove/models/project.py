@@ -20,3 +20,4 @@ class Project(BaseModel):
     status: ProjectStatus = ProjectStatus.IDLE
     active_task_id: UUID | None = None
     task_queue: list[UUID] = Field(default_factory=list)
+    paused: bool = False
