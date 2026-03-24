@@ -319,5 +319,5 @@ Developer ──→ Architect review ──→ PR creation ──→ AVA
 | Phase 6: Scheduler + Issue Poller | ✅ Done | 46/46 tests; PR #18; Closes #12 |
 | Phase 7: Task DAG + GitHub sub-issues | ✅ Done | 52/52 tests; PR #19; Closes #13 |
 | Phase 8: Two-level LangGraph | ✅ Done | 58/58 tests; PR #20; Closes #14 |
-| Phase 9: AVA CI gate + auto-merge | ⏳ Pending | issue #15 |
+| Phase 9: AVA CI gate + auto-merge | ✅ Done | 72/72 tests; PR #21; Closes #15 |
 | Phase 10: PjM priority queue | ⏳ Pending | issue #16 |
