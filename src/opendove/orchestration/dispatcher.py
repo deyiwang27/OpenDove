@@ -17,7 +17,7 @@ class ProjectDispatcher:
         return self.project_store.create_project(project)
 
     def submit_task(self, project_id: UUID, task: Task) -> Task:
-        """Enqueue task and start it immediately when the project is idle."""
+        """Enqueue task and start it immediately when the project is idle and not paused."""
         project = self.project_store.get_project(str(project_id))
         if project is None:
             raise KeyError(f"Project {project_id} not found")
@@ -26,7 +26,11 @@ class ProjectDispatcher:
         self._validate_dependency_graph(task)
         created_task = self.task_store.create_task(task)
 
-        if project.status == ProjectStatus.IDLE and self._dependencies_are_approved(created_task):
+        if (
+            not project.paused
+            and project.status == ProjectStatus.IDLE
+            and self._dependencies_are_approved(created_task)
+        ):
             project = project.model_copy(
                 update={
                     "status": ProjectStatus.ACTIVE,
@@ -48,6 +52,9 @@ class ProjectDispatcher:
         if project is None:
             raise KeyError(f"Project {project_id} not found")
 
+        if project.paused:
+            return None
+
         for queued_task_id in project.task_queue:
             queued_task = self.task_store.get_task(str(queued_task_id))
             if queued_task is None:
@@ -66,6 +73,16 @@ class ProjectDispatcher:
 
         if project.active_task_id != task_id:
             raise KeyError(f"Active task for project {project_id} does not match {task_id}")
+
+        if project.paused:
+            project = project.model_copy(
+                update={
+                    "status": ProjectStatus.IDLE,
+                    "active_task_id": None,
+                }
+            )
+            self.project_store.update_project(project)
+            return None
 
         next_task = self.get_next_eligible_task(project_id)
         if next_task is None:
@@ -90,6 +107,58 @@ class ProjectDispatcher:
 
         next_task = next_task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
         return self.task_store.update_task(next_task)
+
+    def prioritize_queue(self, project_id: UUID, priority_map: dict[UUID, int]) -> None:
+        """Re-sort project.task_queue by priority (0=P0 first, 2=P2 last, missing=P2)."""
+        project = self.project_store.get_project(str(project_id))
+        if project is None:
+            raise KeyError(f"Project {project_id} not found")
+
+        sorted_queue = sorted(
+            project.task_queue,
+            key=lambda task_id: priority_map.get(task_id, 2),
+        )
+        project = project.model_copy(update={"task_queue": sorted_queue})
+        self.project_store.update_project(project)
+
+    def pause_project(self, project_id: UUID) -> None:
+        """Set project.paused = True."""
+        project = self.project_store.get_project(str(project_id))
+        if project is None:
+            raise KeyError(f"Project {project_id} not found")
+
+        project = project.model_copy(update={"paused": True})
+        self.project_store.update_project(project)
+
+    def unpause_project(self, project_id: UUID) -> Task | None:
+        """Set project.paused = False. If IDLE and tasks are queued, start the next eligible one."""
+        project = self.project_store.get_project(str(project_id))
+        if project is None:
+            raise KeyError(f"Project {project_id} not found")
+
+        project = project.model_copy(update={"paused": False})
+        self.project_store.update_project(project)
+
+        # Re-fetch to ensure fresh state for get_next_eligible_task
+        project = self.project_store.get_project(str(project_id))
+        assert project is not None
+
+        if project.status == ProjectStatus.IDLE:
+            next_task = self.get_next_eligible_task(project_id)
+            if next_task is not None:
+                remaining = [t_id for t_id in project.task_queue if t_id != next_task.id]
+                project = project.model_copy(
+                    update={
+                        "status": ProjectStatus.ACTIVE,
+                        "active_task_id": next_task.id,
+                        "task_queue": remaining,
+                    }
+                )
+                self.project_store.update_project(project)
+                next_task = next_task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
+                return self.task_store.update_task(next_task)
+
+        return None
 
     def _dependencies_are_approved(self, task: Task) -> bool:
         for dependency_id in task.depends_on:
