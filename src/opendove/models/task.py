@@ -3,6 +3,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from opendove.validation.contracts import ValidationResult
+
 
 class Role(str, Enum):
     PRODUCT_MANAGER = "product_manager"
@@ -29,4 +31,6 @@ class Task(BaseModel):
     owner: Role
     status: TaskStatus = TaskStatus.PENDING
     retry_count: int = 0
-
+    max_retries: int = 3
+    artifact: str = ""
+    validation_result: ValidationResult | None = None
