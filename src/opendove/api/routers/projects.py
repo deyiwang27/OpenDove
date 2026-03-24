@@ -7,8 +7,10 @@ from opendove.api.dependencies import (
     get_dispatcher,
     get_project_issue_syncer,
     get_project_store,
+    get_task_store,
     register_project_sync_job,
 )
+from opendove.state.memory_store import InMemoryTaskStore
 from opendove.api.schemas import (
     ProjectResponse,
     RegisterProjectRequest,
@@ -74,6 +76,14 @@ def _to_task_response(task: Task) -> TaskResponse:
     )
 
 
+@router.get("", response_model=list[ProjectResponse])
+def list_projects(
+    project_store: InMemoryProjectStore = Depends(get_project_store),
+) -> list[ProjectResponse]:
+    """List all registered projects."""
+    return [_to_project_response(p) for p in project_store.list_projects()]
+
+
 @router.post("", response_model=ProjectResponse, status_code=201)
 def register_project(
     body: RegisterProjectRequest,
@@ -110,6 +120,18 @@ def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
     return _to_project_response(project)
+
+
+@router.get("/{project_id}/tasks", response_model=list[TaskResponse])
+def list_project_tasks(
+    project_id: UUID,
+    project_store: InMemoryProjectStore = Depends(get_project_store),
+    task_store: InMemoryTaskStore = Depends(get_task_store),
+) -> list[TaskResponse]:
+    """List all tasks for a project."""
+    if project_store.get_project(str(project_id)) is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return [_to_task_response(t) for t in task_store.list_tasks() if t.project_id == project_id]
 
 
 @router.post("/{project_id}/tasks", response_model=TaskResponse, status_code=202)
