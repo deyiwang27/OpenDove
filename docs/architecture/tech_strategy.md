@@ -315,7 +315,7 @@ Developer ──→ Architect review ──→ PR creation ──→ AVA
 | Phase 2c: MCP Tool Integration | ✅ Done | 28/28 tests; PR #8; Closes #7 |
 | Phase 3: Persistence | ✅ Done | 28/28 tests; PR #9; Closes #5 |
 | Phase 4: API | ✅ Done | 36/36 tests; PR #10; Closes #6 |
-| Phase 5: NotificationService | ⏳ Pending | issue #11 |
+| Phase 5: NotificationService | ✅ Done | 41/41 tests; PR #17; Closes #11 |
 | Phase 6: Scheduler + Issue Poller | ⏳ Pending | issue #12 |
 | Phase 7: Task DAG + GitHub sub-issues | ⏳ Pending | issue #13 |
 | Phase 8: Two-level LangGraph | ⏳ Pending | issue #14 |
