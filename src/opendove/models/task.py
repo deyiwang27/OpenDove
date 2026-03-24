@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -36,5 +37,9 @@ class Task(BaseModel):
     retry_count: int = 0
     max_retries: int = 3
     artifact: str = ""
+    depends_on: list[UUID] = Field(default_factory=list)
+    risk_level: Literal["low", "architectural"] = "low"
     github_issue_number: int | None = None
+    parent_issue_number: int | None = None
+    github_pr_url: str = ""
     validation_result: ValidationResult | None = None

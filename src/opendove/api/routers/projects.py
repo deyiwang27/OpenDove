@@ -59,12 +59,16 @@ def _to_task_response(task: Task) -> TaskResponse:
         intent=task.intent,
         success_criteria=task.success_criteria,
         owner=task.owner,
+        depends_on=task.depends_on,
+        risk_level=task.risk_level,
         status=task.status,
         retry_count=task.retry_count,
         max_retries=task.max_retries,
         artifact=task.artifact,
         branch_name=task.branch_name,
         github_issue_number=task.github_issue_number,
+        parent_issue_number=task.parent_issue_number,
+        github_pr_url=task.github_pr_url,
         validation_result=_to_validation_result_response(task.validation_result),
     )
 
@@ -120,12 +124,17 @@ def submit_task(
         success_criteria=body.success_criteria,
         owner=body.owner,
         max_retries=body.max_retries,
+        depends_on=body.depends_on,
+        risk_level=body.risk_level,
+        parent_issue_number=body.parent_issue_number,
     )
 
     try:
         created_task = dispatcher.submit_task(project_id, task)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Project not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _to_task_response(created_task)
 

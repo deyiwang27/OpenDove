@@ -29,12 +29,16 @@ def _orm_to_task(orm: TaskORM) -> Task:
         success_criteria=list(json.loads(orm.success_criteria or "[]")),
         owner=Role(orm.owner),
         project_id=orm.project_id,
+        depends_on=[UUID(dependency_id) for dependency_id in json.loads(orm.depends_on or "[]")],
+        risk_level=orm.risk_level,
         branch_name=orm.branch_name,
         worktree_path=orm.worktree_path,
         status=TaskStatus(orm.status),
         retry_count=orm.retry_count,
         max_retries=orm.max_retries,
         artifact=orm.artifact,
+        parent_issue_number=orm.parent_issue_number,
+        github_pr_url=orm.github_pr_url,
         validation_result=validation_result,
     )
 
@@ -53,12 +57,16 @@ def _task_to_orm(task: Task) -> TaskORM:
         intent=task.intent,
         success_criteria=json.dumps(task.success_criteria),
         owner=task.owner.value,
+        depends_on=json.dumps([str(dependency_id) for dependency_id in task.depends_on]),
+        risk_level=task.risk_level,
         status=task.status.value,
         retry_count=task.retry_count,
         max_retries=task.max_retries,
         artifact=task.artifact,
         branch_name=task.branch_name,
         worktree_path=task.worktree_path,
+        parent_issue_number=task.parent_issue_number,
+        github_pr_url=task.github_pr_url,
         validation_decision=validation_decision,
         validation_rationale=validation_rationale,
     )
@@ -88,12 +96,16 @@ class PostgresTaskStore(TaskStore):
             orm_task.intent = flattened_task.intent
             orm_task.success_criteria = flattened_task.success_criteria
             orm_task.owner = flattened_task.owner
+            orm_task.depends_on = flattened_task.depends_on
+            orm_task.risk_level = flattened_task.risk_level
             orm_task.status = flattened_task.status
             orm_task.retry_count = flattened_task.retry_count
             orm_task.max_retries = flattened_task.max_retries
             orm_task.artifact = flattened_task.artifact
             orm_task.branch_name = flattened_task.branch_name
             orm_task.worktree_path = flattened_task.worktree_path
+            orm_task.parent_issue_number = flattened_task.parent_issue_number
+            orm_task.github_pr_url = flattened_task.github_pr_url
             orm_task.validation_decision = flattened_task.validation_decision
             orm_task.validation_rationale = flattened_task.validation_rationale
 
