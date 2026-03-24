@@ -266,5 +266,5 @@ Task (scoped to a Project)
 | Phase 2a: Multi-LLM Agent Layer | ✅ Done | 11/11 tests; LangChain BaseChatModel, per-role config |
 | Phase 2b: Project + Git + Dispatcher | ✅ Done | 18/18 tests; multi-repo, worktrees, task queue |
 | Phase 2c: MCP Tool Integration | ✅ Done | 28/28 tests; PR #8; Closes #7 |
-| Phase 3: Persistence | ⏳ Pending | PostgreSQL for projects + tasks |
+| Phase 3: Persistence | ✅ Done | 28/28 tests; PR #9; Closes #5 |
 | Phase 4: API | ⏳ Pending | FastAPI, project + task endpoints |
