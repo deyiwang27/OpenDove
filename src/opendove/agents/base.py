@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import random
 import time
@@ -45,6 +46,11 @@ try:
 except ImportError:
     pass
 
+try:
+    from openai import BadRequestError as OpenAIBadRequestError
+except ImportError:
+    OpenAIBadRequestError = None
+
 
 class LLMCallError(RuntimeError):
     """Raised when an LLM call fails after all retry attempts are exhausted."""
@@ -57,6 +63,15 @@ _BASE_DELAY = 1.0  # seconds
 def _backoff(attempt: int) -> float:
     """Exponential backoff with full jitter: sleep in [0, base * 2^attempt]."""
     return random.uniform(0, _BASE_DELAY * (2**attempt))  # noqa: S311
+
+
+def _should_fallback_structured_output(exc: Exception) -> bool:
+    """Return True when structured output should fall back to plain JSON parsing."""
+    if OpenAIBadRequestError is not None and isinstance(exc, OpenAIBadRequestError):
+        return True
+
+    message = str(exc).lower()
+    return "response_format" in message or "unavailable" in message
 
 
 class BaseAgent(ABC):
@@ -138,31 +153,99 @@ class BaseAgent(ABC):
         Raises `ValueError` if the response cannot be validated.
         Raises `LLMCallError` if retries are exhausted on a transient error.
         """
+        def _schema_field_list() -> str:
+            fields: list[str] = []
+            for field_name, field_info in schema.model_fields.items():
+                annotation = field_info.annotation
+                if annotation is None:
+                    annotation_name = "Any"
+                elif hasattr(annotation, "__name__"):
+                    annotation_name = str(annotation.__name__)
+                else:
+                    annotation_name = str(annotation).replace("typing.", "")
+                fields.append(f"{field_name}: {annotation_name}")
+            return ", ".join(fields)
+
+        def _extract_text(response: Any) -> str:
+            content = getattr(response, "content", response)
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                text_parts: list[str] = []
+                for item in content:
+                    if isinstance(item, str):
+                        text_parts.append(item)
+                    elif isinstance(item, dict):
+                        text = item.get("text")
+                        if text:
+                            text_parts.append(str(text))
+                    else:
+                        text_parts.append(str(item))
+                return "\n".join(part for part in text_parts if part).strip()
+            return str(content)
+
+        def _strip_code_fences(text: str) -> str:
+            stripped = text.strip()
+            if not stripped.startswith("```"):
+                return stripped
+
+            lines = stripped.splitlines()
+            if len(lines) >= 2 and lines[0].startswith("```") and lines[-1].strip() == "```":
+                return "\n".join(lines[1:-1]).strip()
+
+            return stripped.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+        def _invoke_json_fallback(messages: list[SystemMessage | HumanMessage]) -> T:
+            field_list = _schema_field_list()
+            fallback_messages = [
+                *messages[:-1],
+                HumanMessage(
+                    content=(
+                        f"{messages[-1].content}\n\n"
+                        "Respond with a valid JSON object only. "
+                        f"No explanation, no markdown fences. Fields: {field_list}"
+                    )
+                ),
+            ]
+            response = self.llm.invoke(fallback_messages)
+            text = _strip_code_fences(_extract_text(response))
+            return schema.model_validate(json.loads(text))
+
         if self._react_agent is not None:
             raw = self._call_llm(user_message)
-            structured_llm = self.llm.with_structured_output(schema)
+
+            messages = [
+                SystemMessage(content="Convert the following text into the required JSON structure."),
+                HumanMessage(content=raw),
+            ]
 
             def _structure() -> T:
-                return structured_llm.invoke(  # type: ignore[return-value]
-                    [
-                        SystemMessage(content="Convert the following text into the required JSON structure."),
-                        HumanMessage(content=raw),
-                    ]
-                )
+                try:
+                    structured_llm = self.llm.with_structured_output(schema)
+                    return structured_llm.invoke(messages)  # type: ignore[return-value]
+                except Exception as exc:
+                    if not _should_fallback_structured_output(exc):
+                        raise
+                    return _invoke_json_fallback(messages)
 
             return self._call_with_retry(_structure, label="structured LLM call")
 
-        structured_llm = self.llm.with_structured_output(schema)
         messages = [
             SystemMessage(content=self.system_prompt),
             HumanMessage(content=user_message),
         ]
 
         def _invoke_structured() -> T:
-            result = structured_llm.invoke(messages)
-            if not isinstance(result, schema):
-                raise ValueError(f"LLM returned unexpected type: {type(result)}")
-            return result  # type: ignore[return-value]
+            try:
+                structured_llm = self.llm.with_structured_output(schema)
+                result = structured_llm.invoke(messages)
+                if not isinstance(result, schema):
+                    raise ValueError(f"LLM returned unexpected type: {type(result)}")
+                return result  # type: ignore[return-value]
+            except Exception as exc:
+                if not _should_fallback_structured_output(exc):
+                    raise
+                return _invoke_json_fallback(messages)
 
         return self._call_with_retry(_invoke_structured, label="structured LLM call")
 
