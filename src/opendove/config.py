@@ -43,5 +43,12 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     gemini_api_key: str = ""
 
+    # Notifications
+    notify_email_to: str = ""
+    notify_email_from: str = "opendove@localhost"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_password: str = ""
+
 
 settings = Settings()
