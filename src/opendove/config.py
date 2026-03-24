@@ -25,6 +25,20 @@ class Settings(BaseSettings):
     ava_llm_provider: str = ""
     ava_llm_model: str = ""
 
+    # Per-role tool groups (comma-separated, empty = no tools)
+    # Available groups: claude_code, codex, web_search, web_fetch
+    product_manager_tools: str = "claude_code,web_search,web_fetch"
+    project_manager_tools: str = "claude_code,web_search,web_fetch"
+    architect_tools: str = "claude_code,codex,web_search,web_fetch"
+    developer_tools: str = "claude_code,codex,web_fetch"
+    ava_tools: str = "claude_code,web_fetch"
+
+    # MCP server endpoints (empty = server not available)
+    claude_code_mcp_command: str = "claude"
+    codex_mcp_command: str = "codex"
+    brave_search_api_key: str = ""
+    fetch_mcp_command: str = "npx"
+
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     gemini_api_key: str = ""
