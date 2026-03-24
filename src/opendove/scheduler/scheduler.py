@@ -26,6 +26,14 @@ class OpenDoveScheduler:
             replace_existing=True,
         )
 
+    def add_seconds_job(self, func: Callable[[], object], seconds: int, job_id: str) -> None:
+        self._scheduler.add_job(
+            func,
+            IntervalTrigger(seconds=seconds),
+            id=job_id,
+            replace_existing=True,
+        )
+
     def add_daily_job(self, func: Callable[[], object], hour: int, job_id: str) -> None:
         self._scheduler.add_job(
             func,

@@ -24,7 +24,7 @@ services:
       # Override db URL to use the compose service name
       OPENDOVE_DATABASE_URL: postgresql+psycopg://opendove:opendove@db:5432/opendove
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       db:
         condition: service_healthy
