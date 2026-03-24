@@ -38,6 +38,7 @@ class SubmitTaskRequest(BaseModel):
 class ValidationResultResponse(BaseModel):
     decision: ValidationDecision
     rationale: str
+    checks: list[str] = Field(default_factory=list)
 
 
 class TaskResponse(BaseModel):

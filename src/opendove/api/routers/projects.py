@@ -48,6 +48,7 @@ def _to_validation_result_response(
     return ValidationResultResponse(
         decision=validation_result.decision,
         rationale=validation_result.rationale,
+        checks=validation_result.checks,
     )
 
 
