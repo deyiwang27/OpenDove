@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OpenDove kickoff docs
+    url: https://github.com/deyiwang27/OpenDove/blob/main/docs/README.md
+    about: Read the canonical project docs before opening a new workflow or architecture issue.
+

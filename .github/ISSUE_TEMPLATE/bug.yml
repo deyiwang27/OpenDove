@@ -1,0 +1,45 @@
+name: Bug
+description: Report a defect or regression in the repository.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: issue
+    attributes:
+      label: What happened
+      description: Describe the bug or regression.
+      placeholder: Include expected behavior and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Why does this matter?
+      placeholder: Describe severity, affected workflows, or blocked work.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide the smallest reliable reproduction.
+      placeholder: Include commands, inputs, and environment details.
+    validations:
+      required: true
+  - type: textarea
+    id: suspected
+    attributes:
+      label: Suspected Cause or Scope
+      description: If known, what part of the system likely changed or failed?
+      placeholder: Link commits, files, or features when possible.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include logs, screenshots, trace output, or failing tests.
+      placeholder: Paste the most relevant evidence here.
+    validations:
+      required: true
+

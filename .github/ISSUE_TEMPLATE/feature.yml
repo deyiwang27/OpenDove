@@ -1,0 +1,63 @@
+name: Feature
+description: Propose a new feature or implementation slice for OpenDove.
+title: "[Feature] "
+labels:
+  - feature
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or system problem are we solving?
+      placeholder: Describe the gap, friction, or desired outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What should be true when this feature is done?
+      placeholder: State the intended end result in concrete terms.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In Scope
+      description: List the work that belongs in this feature.
+      placeholder: Include the minimal changes needed for this slice.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: State what this feature will not do.
+      placeholder: Prevent future drift by naming exclusions clearly.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this feature is complete?
+      placeholder: Use a short checklist of observable outcomes.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Unknowns
+      description: What could go wrong, and what might need escalation?
+      placeholder: Note ambiguity, technical risk, or dependency risk.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation Evidence
+      description: What tests, demos, or artifacts must exist before approval?
+      placeholder: Unit tests, integration tests, screenshots, logs, design notes, etc.
+    validations:
+      required: true
+
