@@ -31,12 +31,16 @@ def _to_task_response(task: Task) -> TaskResponse:
         intent=task.intent,
         success_criteria=task.success_criteria,
         owner=task.owner,
+        depends_on=task.depends_on,
+        risk_level=task.risk_level,
         status=task.status,
         retry_count=task.retry_count,
         max_retries=task.max_retries,
         artifact=task.artifact,
         branch_name=task.branch_name,
         github_issue_number=task.github_issue_number,
+        parent_issue_number=task.parent_issue_number,
+        github_pr_url=task.github_pr_url,
         validation_result=_to_validation_result_response(task.validation_result),
     )
 

@@ -58,3 +58,50 @@ class GitHubClient:
 
     def get_issue_comments(self, number: int) -> list[str]:
         return [comment.body or "" for comment in self._repo.get_issue(number).get_comments()]
+
+    def create_sub_issue(self, parent_number: int, title: str, body: str) -> GitHubIssue:
+        """Create a new issue and link it to its parent via a comment."""
+        new_issue = self._repo.create_issue(title=title, body=body)
+        self.post_comment(parent_number, f"Sub-task: #{new_issue.number} {title}")
+        return GitHubIssue(
+            number=new_issue.number,
+            title=new_issue.title,
+            body=new_issue.body or "",
+            labels=[label.name for label in new_issue.labels],
+            state=new_issue.state,
+            html_url=new_issue.html_url,
+        )
+
+    def get_ci_status(self, pr_number: int) -> str:
+        """Return the combined CI status for a pull request."""
+        pr = self._repo.get_pull(pr_number)
+        commits = list(pr.get_commits())
+        if not commits:
+            return "unknown"
+
+        commit = commits[-1]
+        combined_status = commit.get_combined_status()
+        statuses = list(combined_status.statuses)
+        if not statuses:
+            check_runs = list(commit.get_check_runs())
+            if not check_runs:
+                return "unknown"
+
+            conclusions = {check_run.conclusion for check_run in check_runs}
+            if "failure" in conclusions:
+                return "failure"
+            if conclusions and all(conclusion == "success" for conclusion in conclusions):
+                return "success"
+            return "pending"
+
+        return combined_status.state
+
+    def merge_pr(self, pr_number: int, merge_message: str = "") -> None:
+        """Merge a pull request using squash merge."""
+        pr = self._repo.get_pull(pr_number)
+        pr.merge(commit_message=merge_message, merge_method="squash")
+
+    def request_human_review(self, issue_number: int, reason: str) -> None:
+        """Flag an issue for human review and explain why."""
+        self.add_label(issue_number, "needs-human-review")
+        self.post_comment(issue_number, f"⚠️ **Human review required**\n\n{reason}")

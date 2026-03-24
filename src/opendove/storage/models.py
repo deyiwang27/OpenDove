@@ -65,8 +65,12 @@ class TaskORM(Base):
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     artifact: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    risk_level: Mapped[str] = mapped_column(String(20), nullable=False, default="low")
     branch_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     worktree_path: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    parent_issue_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    github_pr_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
     validation_decision: Mapped[str | None] = mapped_column(String(50), nullable=True)
     validation_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
