@@ -5,9 +5,11 @@ from typing import Any, Literal, NotRequired, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from opendove.agents.base import BaseAgent
+from opendove.agents.base import BaseAgent, LLMCallError
 from opendove.models.task import Role, Task, TaskStatus
 from opendove.validation.contracts import ValidationDecision, ValidationResult
+
+_log = __import__("logging").getLogger(__name__)
 
 
 class GraphState(TypedDict):
@@ -147,6 +149,36 @@ def _route_after_ava(state: GraphState) -> Literal["approve", "architect_review"
     return "escalate"
 
 
+def _wrap_with_llm_error_guard(node_fn: GraphNode, node_name: str) -> GraphNode:
+    """Wrap a graph node so that LLMCallError escalates the task instead of crashing."""
+
+    def guarded(state: GraphState) -> GraphState:
+        try:
+            return node_fn(state)
+        except LLMCallError as exc:
+            _log.error("LLM call failed in %s, escalating task: %s", node_name, exc)
+            task = state["task"].model_copy(
+                update={
+                    "status": TaskStatus.ESCALATED,
+                    "validation_result": ValidationResult(
+                        task_id=state["task"].id,
+                        decision=ValidationDecision.ESCALATE,
+                        rationale=f"LLM call failed in {node_name}: {exc}",
+                    ),
+                }
+            )
+            return {
+                **state,
+                "task": task,
+                "messages": [
+                    *state["messages"],
+                    f"{node_name}: escalated due to LLM failure.",
+                ],
+            }
+
+    return guarded
+
+
 def build_orchestration_summary() -> str:
     ordered_roles = [
         Role.PRODUCT_MANAGER,
@@ -170,37 +202,54 @@ def build_graph(
 ) -> Any:
     graph_builder = StateGraph(GraphState)
     effective_developer_node = developer_node_fn or developer_node
-    effective_product_manager_node = (
-        product_manager_agent.run if product_manager_agent is not None else product_manager_node
-    )
-    effective_project_manager_node = (
-        project_manager_agent.run if project_manager_agent is not None else project_manager_node
-    )
-    effective_lead_architect_node = (
-        lead_architect_agent.run if lead_architect_agent is not None else lead_architect_node
-    )
-    effective_architect_review_node = (
-        architect_review_agent.run
-        if architect_review_agent is not None
-        else architect_review_node
-    )
-    effective_developer_node = (
-        developer_agent.run if developer_agent is not None else effective_developer_node
-    )
-    effective_ava_node = ava_agent.run if ava_agent is not None else ava_node
 
-    graph_builder.add_node("product_manager_node", effective_product_manager_node)
-    graph_builder.add_node("project_manager_node", effective_project_manager_node)
-    graph_builder.add_node("lead_architect_node", effective_lead_architect_node)
-    graph_builder.add_node("architect_review_node", effective_architect_review_node)
-    graph_builder.add_node("developer_node", effective_developer_node)
-    graph_builder.add_node("ava_node", effective_ava_node)
+    raw_nodes: dict[str, GraphNode] = {
+        "product_manager_node": (
+            product_manager_agent.run if product_manager_agent is not None else product_manager_node
+        ),
+        "project_manager_node": (
+            project_manager_agent.run if project_manager_agent is not None else project_manager_node
+        ),
+        "lead_architect_node": (
+            lead_architect_agent.run if lead_architect_agent is not None else lead_architect_node
+        ),
+        "architect_review_node": (
+            architect_review_agent.run
+            if architect_review_agent is not None
+            else architect_review_node
+        ),
+        "developer_node": (
+            developer_agent.run if developer_agent is not None else effective_developer_node
+        ),
+        "ava_node": ava_agent.run if ava_agent is not None else ava_node,
+    }
+
+    for name, fn in raw_nodes.items():
+        graph_builder.add_node(name, _wrap_with_llm_error_guard(fn, name))
+
+    def _route_after_pipeline_node(
+        next_node: str,
+    ) -> Callable[[GraphState], Literal["escalate"] | str]:
+        def _router(state: GraphState) -> Literal["escalate"] | str:
+            if state["task"].status is TaskStatus.ESCALATED:
+                return "escalate"
+            return next_node
+
+        return _router
 
     graph_builder.add_edge(START, "product_manager_node")
-    graph_builder.add_edge("product_manager_node", "project_manager_node")
-    graph_builder.add_edge("project_manager_node", "lead_architect_node")
-    graph_builder.add_edge("lead_architect_node", "developer_node")
-    graph_builder.add_edge("developer_node", "ava_node")
+    for src, dst in [
+        ("product_manager_node", "project_manager_node"),
+        ("project_manager_node", "lead_architect_node"),
+        ("lead_architect_node", "developer_node"),
+        ("developer_node", "ava_node"),
+    ]:
+        graph_builder.add_conditional_edges(
+            src,
+            _route_after_pipeline_node(dst),
+            {"escalate": END, dst: dst},
+        )
+
     graph_builder.add_conditional_edges(
         "ava_node",
         _route_after_ava,
@@ -210,6 +259,10 @@ def build_graph(
             "escalate": END,
         },
     )
-    graph_builder.add_edge("architect_review_node", "ava_node")
+    graph_builder.add_conditional_edges(
+        "architect_review_node",
+        _route_after_pipeline_node("ava_node"),
+        {"escalate": END, "ava_node": "ava_node"},
+    )
 
     return graph_builder.compile()
