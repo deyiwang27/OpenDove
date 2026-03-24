@@ -57,6 +57,8 @@ OpenDove is intended to own that missing layer.
 - [Architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
 - [Glossary](docs/glossary.md)
+- [Development Workflow](docs/development-workflow.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Repository Structure
 
@@ -85,6 +87,7 @@ OpenDove is intended to own that missing layer.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+pre-commit install
 pytest
 PYTHONPATH=src python -m opendove.main
 ```

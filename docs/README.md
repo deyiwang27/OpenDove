@@ -10,6 +10,7 @@ This directory contains the canonical kickoff documentation for OpenDove.
 - [architecture.md](architecture.md): high-level system architecture and layering
 - [roadmap.md](roadmap.md): phased path from kickoff to autonomous software factory
 - [glossary.md](glossary.md): shared terms and role definitions
+- [development-workflow.md](development-workflow.md): AI-assisted issue, PR, review, and CI process
 
 ## Notes
 
