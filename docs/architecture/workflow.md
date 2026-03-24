@@ -14,10 +14,11 @@ Before any code is written, open an issue describing the work:
 gh issue create --title "..." --body "..." --label enhancement
 ```
 
-### 2. Create a Feature Branch
-Branch name includes the issue number:
+### 2. Create a Feature Branch off `main`
+Always branch from `main`, never from another feature branch:
 
 ```bash
+git checkout main && git pull
 git checkout -b feat/issue-{number}-short-description
 ```
 
