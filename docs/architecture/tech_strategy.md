@@ -156,6 +156,41 @@ Task (scoped to a Project)
 
 ---
 
+### Phase 2c — MCP Tool Integration
+
+**Goal:** Equip every agent with MCP-backed tools via `langchain-mcp-adapters`. Agents become ReAct loops when tools are present; single-call when not.
+
+**MCP servers:**
+- **Claude Code MCP** — file tools (read/write/edit/glob/grep) + bash. Scoped: read within project repo, write within task worktree only.
+- **CodeX MCP** — full code generation sessions (Architect prototyping, Developer implementation)
+- **Brave Search MCP** — structured web search (PdM, PjM, Architect)
+- **Fetch MCP** — fetch any URL as clean text (PdM, PjM, Architect, Developer, AVA)
+
+**Tool assignment per role:**
+
+| Role | Claude Code | CodeX | Web Search | Fetch |
+|---|---|---|---|---|
+| Product Manager | write spec docs | — | ✅ | ✅ |
+| Project Manager | write task/progress docs | — | ✅ | ✅ |
+| Lead Architect | read/grep codebase, write ADRs | ✅ | ✅ | ✅ |
+| Developer | read/write/edit/bash in worktree | ✅ | — | ✅ |
+| AVA | bash (run tests), read (review) | — | — | ✅ |
+
+**Deliverables:**
+- `langchain-mcp-adapters` and `mcp` added to dependencies
+- `src/opendove/agents/tool_registry.py` — `MCPToolRegistry`: connects to MCP servers, loads and filters tools by role
+- `src/opendove/agents/tool_config.py` — `RoleToolConfig`: maps roles to tool groups; per-role override via env (`OPENDOVE_{ROLE}_TOOLS`)
+- `src/opendove/config.py` — per-role tool config settings
+- `src/opendove/agents/base.py` — `tools: list[BaseTool]` injection; uses `create_react_agent` when tools present, `llm.invoke` otherwise
+- Unit tests: ReAct path with fake tools; tool registry filtering
+
+**Success criteria:**
+- `BaseAgent` with no tools is backward compatible
+- `MCPToolRegistry.get_tools_for_role(role)` returns correct filtered set
+- All existing tests pass
+
+---
+
 ### Phase 2b — Project Model + Git Manager + Dispatcher
 
 **Goal:** Introduce `Project` as a first-class entity. Implement `GitManager` for repo/worktree lifecycle. Add `ProjectDispatcher` for per-project task queuing.
@@ -230,5 +265,6 @@ Task (scoped to a Project)
 | Phase 1: Core Engine | ✅ Done | 7/7 unit tests pass; real langgraph wired |
 | Phase 2a: Multi-LLM Agent Layer | ✅ Done | 11/11 tests; LangChain BaseChatModel, per-role config |
 | Phase 2b: Project + Git + Dispatcher | ✅ Done | 18/18 tests; multi-repo, worktrees, task queue |
+| Phase 2c: MCP Tool Integration | 🔄 In Progress | issue #7; branch feat/issue-7-mcp-tool-integration |
 | Phase 3: Persistence | ⏳ Pending | PostgreSQL for projects + tasks |
 | Phase 4: API | ⏳ Pending | FastAPI, project + task endpoints |
