@@ -14,6 +14,7 @@ class GraphState(TypedDict):
     task: Task
     messages: list[str]
     retry_count: int
+    architect_retry_count: NotRequired[int]
     worktree_path: NotRequired[str]
 
 
@@ -28,6 +29,7 @@ def product_manager_node(state: GraphState) -> GraphState:
         **state,
         "task": task,
         "messages": [*state["messages"], "ProductManager: spec locked."],
+        "architect_retry_count": state.get("architect_retry_count", 0),
         "worktree_path": state.get("worktree_path", ""),
     }
 
@@ -42,6 +44,7 @@ def project_manager_node(state: GraphState) -> GraphState:
             *state["messages"],
             f"ProjectManager: task assigned, max_retries={task.max_retries}.",
         ],
+        "architect_retry_count": state.get("architect_retry_count", 0),
         "worktree_path": state.get("worktree_path", ""),
     }
 
@@ -50,6 +53,7 @@ def lead_architect_node(state: GraphState) -> GraphState:
     return {
         **state,
         "messages": [*state["messages"], "Architect: approach defined."],
+        "architect_retry_count": state.get("architect_retry_count", 0),
         "worktree_path": state.get("worktree_path", ""),
     }
 
@@ -63,6 +67,25 @@ def developer_node(state: GraphState) -> GraphState:
         **state,
         "task": task,
         "messages": [*state["messages"], "Developer: implementation complete."],
+        "architect_retry_count": state.get("architect_retry_count", 0),
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def architect_review_node(state: GraphState) -> GraphState:
+    task = state["task"]
+    architect_retry_count = state.get("architect_retry_count", 0) + 1
+    task.artifact = "revised_implementation_stub"
+    task.status = TaskStatus.AWAITING_VALIDATION
+
+    return {
+        **state,
+        "task": task,
+        "architect_retry_count": architect_retry_count,
+        "messages": [
+            *state["messages"],
+            f"Architect: revised after AVA rejection (attempt {architect_retry_count}).",
+        ],
         "worktree_path": state.get("worktree_path", ""),
     }
 
@@ -70,6 +93,7 @@ def developer_node(state: GraphState) -> GraphState:
 def ava_node(state: GraphState) -> GraphState:
     task = state["task"]
     retry_count = state["retry_count"]
+    architect_retry_count = state.get("architect_retry_count", 0)
 
     if retry_count >= task.max_retries:
         task.status = TaskStatus.ESCALATED
@@ -81,6 +105,10 @@ def ava_node(state: GraphState) -> GraphState:
         task.status = TaskStatus.REJECTED
         decision = ValidationDecision.REJECT
         rationale = "No artifact produced."
+    elif architect_retry_count >= 2:
+        task.status = TaskStatus.ESCALATED
+        decision = ValidationDecision.ESCALATE
+        rationale = "Architect retry limit reached."
     else:
         task.status = TaskStatus.APPROVED
         decision = ValidationDecision.APPROVE
@@ -99,20 +127,23 @@ def ava_node(state: GraphState) -> GraphState:
         **state,
         "task": task,
         "retry_count": retry_count,
+        "architect_retry_count": architect_retry_count,
         "messages": [*state["messages"], f"AVA: {decision.value}."],
         "worktree_path": state.get("worktree_path", ""),
     }
 
 
-def _route_after_ava(state: GraphState) -> Literal["approve", "reject", "escalate"]:
+def _route_after_ava(state: GraphState) -> Literal["approve", "architect_review", "escalate"]:
     validation_result = state["task"].validation_result
     if validation_result is None:
         raise ValueError("AVA must set task.validation_result before routing.")
 
     if validation_result.decision is ValidationDecision.APPROVE:
         return "approve"
-    if validation_result.decision is ValidationDecision.REJECT:
-        return "reject"
+    if validation_result.decision is ValidationDecision.ESCALATE:
+        return "escalate"
+    if state.get("architect_retry_count", 0) < 2:
+        return "architect_review"
     return "escalate"
 
 
@@ -133,6 +164,7 @@ def build_graph(
     product_manager_agent: BaseAgent | None = None,
     project_manager_agent: BaseAgent | None = None,
     lead_architect_agent: BaseAgent | None = None,
+    architect_review_agent: BaseAgent | None = None,
     developer_agent: BaseAgent | None = None,
     ava_agent: BaseAgent | None = None,
 ) -> Any:
@@ -147,6 +179,11 @@ def build_graph(
     effective_lead_architect_node = (
         lead_architect_agent.run if lead_architect_agent is not None else lead_architect_node
     )
+    effective_architect_review_node = (
+        architect_review_agent.run
+        if architect_review_agent is not None
+        else architect_review_node
+    )
     effective_developer_node = (
         developer_agent.run if developer_agent is not None else effective_developer_node
     )
@@ -155,6 +192,7 @@ def build_graph(
     graph_builder.add_node("product_manager_node", effective_product_manager_node)
     graph_builder.add_node("project_manager_node", effective_project_manager_node)
     graph_builder.add_node("lead_architect_node", effective_lead_architect_node)
+    graph_builder.add_node("architect_review_node", effective_architect_review_node)
     graph_builder.add_node("developer_node", effective_developer_node)
     graph_builder.add_node("ava_node", effective_ava_node)
 
@@ -168,9 +206,10 @@ def build_graph(
         _route_after_ava,
         {
             "approve": END,
-            "reject": "developer_node",
+            "architect_review": "architect_review_node",
             "escalate": END,
         },
     )
+    graph_builder.add_edge("architect_review_node", "ava_node")
 
     return graph_builder.compile()
