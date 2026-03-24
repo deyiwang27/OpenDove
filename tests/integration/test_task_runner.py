@@ -136,3 +136,25 @@ def test_runner_persists_escalated_task() -> None:
     assert stored.status == TaskStatus.ESCALATED
     assert len(calls) == 1
     assert calls[0] == (project.id, submitted.id)
+
+
+def test_runner_stores_execution_log() -> None:
+    """TaskRunner persists a non-empty execution_log on the completed task."""
+    task_store, dispatcher, project = _setup()
+    runner = _all_approve_runner(task_store, dispatcher)
+
+    raw_task = Task(
+        title="Log Task",
+        intent="Produce an execution log.",
+        success_criteria=["Log is captured."],
+        owner=Role.DEVELOPER,
+    )
+    submitted = dispatcher.submit_task(project.id, raw_task)
+    result = runner.run(submitted, project.id)
+
+    assert isinstance(result.execution_log, list)
+    assert len(result.execution_log) > 0
+
+    stored = task_store.get_task(str(result.id))
+    assert stored is not None
+    assert stored.execution_log == result.execution_log

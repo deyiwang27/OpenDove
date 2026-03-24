@@ -62,6 +62,35 @@ def test_submit_task_sets_in_progress() -> None:
     assert body["project_id"] == project["id"]
 
 
+def test_task_response_includes_execution_log() -> None:
+    """GET /tasks/{id} includes an execution_log field (empty list for pending tasks)."""
+    project = _register_project()
+    task = _submit_task(project["id"], "Log Field Task")
+
+    response = client.get(f"/tasks/{task['id']}")
+    assert response.status_code == 200
+    body = response.json()
+    assert "execution_log" in body
+    assert isinstance(body["execution_log"], list)
+
+
+def test_task_logs_endpoint_returns_list() -> None:
+    """GET /tasks/{id}/logs returns a list (empty for a freshly submitted task)."""
+    project = _register_project()
+    task = _submit_task(project["id"], "Logs Endpoint Task")
+
+    response = client.get(f"/tasks/{task['id']}/logs")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_task_logs_endpoint_404_unknown_task() -> None:
+    """GET /tasks/{id}/logs returns 404 for an unknown task id."""
+    import uuid
+    response = client.get(f"/tasks/{uuid.uuid4()}/logs")
+    assert response.status_code == 404
+
+
 def test_two_tasks_queue_correctly() -> None:
     """Submit two tasks to same project; first is IN_PROGRESS, second is PENDING; queued_task_count=1."""
     project = _register_project()

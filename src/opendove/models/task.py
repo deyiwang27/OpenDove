@@ -43,3 +43,4 @@ class Task(BaseModel):
     parent_issue_number: int | None = None
     github_pr_url: str = ""
     validation_result: ValidationResult | None = None
+    execution_log: list[str] = Field(default_factory=list)
