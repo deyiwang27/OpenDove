@@ -29,6 +29,9 @@ class Task(BaseModel):
     intent: str
     success_criteria: list[str]
     owner: Role
+    project_id: UUID | None = None
+    branch_name: str = ""
+    worktree_path: str = ""
     status: TaskStatus = TaskStatus.PENDING
     retry_count: int = 0
     max_retries: int = 3
