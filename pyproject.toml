@@ -11,6 +11,7 @@ requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
 authors = [{ name = "Deyi" }]
 dependencies = [
+  "alembic>=1.13.0",
   "langgraph>=0.2.0",
   "langchain-anthropic>=0.3.0",
   "langchain-mcp-adapters>=0.1.0",
@@ -38,6 +39,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: marks tests that require a running PostgreSQL instance"]
 
 [tool.ruff]
 line-length = 100
