@@ -36,7 +36,7 @@ def _build_worker() -> TaskWorker:
     return TaskWorker(task_store=_task_store, task_runner=runner)
 
 
-_worker = _build_worker()
+_worker: TaskWorker | None = None
 
 
 def get_task_store() -> InMemoryTaskStore:
@@ -146,12 +146,15 @@ def reset_state() -> None:
     _task_store._tasks.clear()
     _project_store._projects.clear()
     _scheduler.clear_jobs()
-    _worker = _build_worker()
+    _worker = None
 
 
 def get_worker() -> TaskWorker:
+    global _worker
+    if _worker is None:
+        _worker = _build_worker()
     return _worker
 
 
 def run_worker_tick() -> None:
-    _worker.tick()
+    get_worker().tick()
