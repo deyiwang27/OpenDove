@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     workspace_dir: Path = Path.home() / ".opendove"
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/opendove"
 
-    llm_provider: Literal["anthropic", "openai", "gemini"] = "anthropic"
+    llm_provider: Literal["anthropic", "openai", "gemini", "deepseek"] = "anthropic"
     llm_model: str = "claude-sonnet-4-6"
 
     product_manager_llm_provider: str = ""
@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     gemini_api_key: str = ""
+    deepseek_api_key: str = ""
     github_token: str = ""
     github_issue_label: str = "opendove"
     github_sync_interval_minutes: int = 5

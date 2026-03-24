@@ -18,6 +18,14 @@ def build_llm(provider: str, model: str, settings: Settings) -> BaseChatModel:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         return ChatGoogleGenerativeAI(model=model, google_api_key=settings.gemini_api_key or None)
+    if provider == "deepseek":
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(
+            model=model,
+            api_key=settings.deepseek_api_key or None,
+            base_url="https://api.deepseek.com/v1",
+        )
     raise ValueError(f"Unsupported LLM provider: {provider!r}")
 
 
