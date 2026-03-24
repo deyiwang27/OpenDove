@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opendove
+      POSTGRES_PASSWORD: opendove
+      POSTGRES_DB: opendove
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opendove -d opendove"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      target: app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override db URL to use the compose service name
+      OPENDOVE_DATABASE_URL: postgresql+psycopg://opendove:opendove@db:5432/opendove
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Run migrations then start the server
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        python -m opendove.main
+      "
+    volumes:
+      # Persist the workspace (git clones, worktrees) across restarts
+      - opendove_workspace:/root/.opendove
+
+volumes:
+  postgres_data:
+  opendove_workspace:

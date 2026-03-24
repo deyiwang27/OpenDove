@@ -322,3 +322,4 @@ Developer ──→ Architect review ──→ PR creation ──→ AVA
 | Phase 9: AVA CI gate + auto-merge | ✅ Done | 72/72 tests; PR #21; Closes #15 |
 | Phase 10: PjM priority queue | ✅ Done | 64/64 tests; PR #22; Closes #16 |
 | Phase 11: Agent LLM calls + prompts | ✅ Done | 92/92 tests; PR #24; Closes #23 |
+| Phase 12: Docker Compose + runbook | ✅ Done | PR #26; Closes #25 |
