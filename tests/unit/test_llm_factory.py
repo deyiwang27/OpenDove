@@ -66,3 +66,36 @@ def test_all_roles_resolve() -> None:
     for role in Role:
         result = build_llm_for_role(role, settings)
         assert isinstance(result, ChatAnthropic)
+
+
+def test_build_llm_deepseek() -> None:
+    """build_llm with provider=deepseek returns a ChatOpenAI instance pointing at DeepSeek."""
+    settings = Settings(
+        llm_provider="anthropic",
+        llm_model="claude-sonnet-4-6",
+        anthropic_api_key="test-key",
+        deepseek_api_key="ds-test-key",
+        _env_file=None,
+    )
+
+    result = build_llm("deepseek", "deepseek-chat", settings)
+
+    assert isinstance(result, ChatOpenAI)
+    assert "deepseek" in str(result.openai_api_base).lower()
+
+
+def test_build_llm_for_role_uses_deepseek_override() -> None:
+    """A role-level deepseek override resolves to ChatOpenAI."""
+    settings = Settings(
+        llm_provider="anthropic",
+        llm_model="claude-sonnet-4-6",
+        anthropic_api_key="test-key",
+        deepseek_api_key="ds-test-key",
+        developer_llm_provider="deepseek",
+        developer_llm_model="deepseek-coder",
+        _env_file=None,
+    )
+
+    result = build_llm_for_role(Role.DEVELOPER, settings)
+
+    assert isinstance(result, ChatOpenAI)
