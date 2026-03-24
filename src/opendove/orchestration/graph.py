@@ -1,4 +1,119 @@
-from opendove.models.task import Role
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any, Literal, NotRequired, TypedDict
+
+from langgraph.graph import END, START, StateGraph
+
+from opendove.agents.base import BaseAgent
+from opendove.models.task import Role, Task, TaskStatus
+from opendove.validation.contracts import ValidationDecision, ValidationResult
+
+
+class GraphState(TypedDict):
+    task: Task
+    messages: list[str]
+    retry_count: int
+    worktree_path: NotRequired[str]
+
+
+GraphNode = Callable[[GraphState], GraphState]
+
+
+def product_manager_node(state: GraphState) -> GraphState:
+    task = state["task"]
+    task.status = TaskStatus.IN_PROGRESS
+
+    return {
+        **state,
+        "task": task,
+        "messages": [*state["messages"], "ProductManager: spec locked."],
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def project_manager_node(state: GraphState) -> GraphState:
+    task = state["task"]
+
+    return {
+        **state,
+        "task": task,
+        "messages": [
+            *state["messages"],
+            f"ProjectManager: task assigned, max_retries={task.max_retries}.",
+        ],
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def lead_architect_node(state: GraphState) -> GraphState:
+    return {
+        **state,
+        "messages": [*state["messages"], "Architect: approach defined."],
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def developer_node(state: GraphState) -> GraphState:
+    task = state["task"]
+    task.artifact = "implementation_stub"
+    task.status = TaskStatus.AWAITING_VALIDATION
+
+    return {
+        **state,
+        "task": task,
+        "messages": [*state["messages"], "Developer: implementation complete."],
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def ava_node(state: GraphState) -> GraphState:
+    task = state["task"]
+    retry_count = state["retry_count"]
+
+    if retry_count >= task.max_retries:
+        task.status = TaskStatus.ESCALATED
+        decision = ValidationDecision.ESCALATE
+        rationale = "Retry limit reached."
+    elif task.artifact == "":
+        retry_count += 1
+        task.retry_count = retry_count
+        task.status = TaskStatus.REJECTED
+        decision = ValidationDecision.REJECT
+        rationale = "No artifact produced."
+    else:
+        task.status = TaskStatus.APPROVED
+        decision = ValidationDecision.APPROVE
+        rationale = "Artifact present and criteria met."
+
+    if decision is not ValidationDecision.REJECT:
+        task.retry_count = retry_count
+
+    task.validation_result = ValidationResult(
+        task_id=task.id,
+        decision=decision,
+        rationale=rationale,
+    )
+
+    return {
+        **state,
+        "task": task,
+        "retry_count": retry_count,
+        "messages": [*state["messages"], f"AVA: {decision.value}."],
+        "worktree_path": state.get("worktree_path", ""),
+    }
+
+
+def _route_after_ava(state: GraphState) -> Literal["approve", "reject", "escalate"]:
+    validation_result = state["task"].validation_result
+    if validation_result is None:
+        raise ValueError("AVA must set task.validation_result before routing.")
+
+    if validation_result.decision is ValidationDecision.APPROVE:
+        return "approve"
+    if validation_result.decision is ValidationDecision.REJECT:
+        return "reject"
+    return "escalate"
 
 
 def build_orchestration_summary() -> str:
@@ -12,3 +127,50 @@ def build_orchestration_summary() -> str:
     path = " -> ".join(role.value for role in ordered_roles)
     return f"OpenDove orchestration path: {path}"
 
+
+def build_graph(
+    developer_node_fn: GraphNode | None = None,
+    product_manager_agent: BaseAgent | None = None,
+    project_manager_agent: BaseAgent | None = None,
+    lead_architect_agent: BaseAgent | None = None,
+    developer_agent: BaseAgent | None = None,
+    ava_agent: BaseAgent | None = None,
+) -> Any:
+    graph_builder = StateGraph(GraphState)
+    effective_developer_node = developer_node_fn or developer_node
+    effective_product_manager_node = (
+        product_manager_agent.run if product_manager_agent is not None else product_manager_node
+    )
+    effective_project_manager_node = (
+        project_manager_agent.run if project_manager_agent is not None else project_manager_node
+    )
+    effective_lead_architect_node = (
+        lead_architect_agent.run if lead_architect_agent is not None else lead_architect_node
+    )
+    effective_developer_node = (
+        developer_agent.run if developer_agent is not None else effective_developer_node
+    )
+    effective_ava_node = ava_agent.run if ava_agent is not None else ava_node
+
+    graph_builder.add_node("product_manager_node", effective_product_manager_node)
+    graph_builder.add_node("project_manager_node", effective_project_manager_node)
+    graph_builder.add_node("lead_architect_node", effective_lead_architect_node)
+    graph_builder.add_node("developer_node", effective_developer_node)
+    graph_builder.add_node("ava_node", effective_ava_node)
+
+    graph_builder.add_edge(START, "product_manager_node")
+    graph_builder.add_edge("product_manager_node", "project_manager_node")
+    graph_builder.add_edge("project_manager_node", "lead_architect_node")
+    graph_builder.add_edge("lead_architect_node", "developer_node")
+    graph_builder.add_edge("developer_node", "ava_node")
+    graph_builder.add_conditional_edges(
+        "ava_node",
+        _route_after_ava,
+        {
+            "approve": END,
+            "reject": "developer_node",
+            "escalate": END,
+        },
+    )
+
+    return graph_builder.compile()
