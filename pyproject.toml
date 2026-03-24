@@ -44,6 +44,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = ["integration: marks tests that require a running PostgreSQL instance"]
 
 [tool.ruff]
