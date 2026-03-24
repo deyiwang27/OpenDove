@@ -258,6 +258,53 @@ Task (scoped to a Project)
 
 ---
 
+## Autonomous Loop Design
+
+### Outer graph (issue lifecycle — daily trigger)
+```
+PdM ──────────────────────────────────────────────────────────────────┐
+ │  reads: roadmap, docs, closed issues, Discussions, feedback docs    │
+ │  writes: new GitHub Issues                                          │
+ ▼                                                                     │
+PjM — priority queue (P0/P1/P2), dependency ordering                  │
+ ▼                                                                     │
+Architect — reads issue + codebase                                     │
+          — writes ADR if architectural change                         │
+          — creates GitHub sub-issues with DAG + risk_level flag       │
+ ▼                                                                     │
+[Inner graph × N sub-tasks, in DAG order]                              │
+ ▼                                                                     │
+PjM — closes parent issue, posts summary comment, updates roadmap      │
+ ▼                                                                     │
+PdM ◄──────────────── reviews as end-user + product spec check ────────┘
+    creates new issues: bugs / gaps / improvements
+```
+
+### Inner graph (sub-task lifecycle — per sub-issue)
+```
+Developer ──→ Architect review ──→ PR creation ──→ AVA
+                    ▲                              │  checks: CI, docs updated,
+                    │     reject (≤2 retries)      │  requirements, risk_level
+                    └──────────────────────────────┘
+                                                   │ low-risk + all pass → auto-merge
+                                                   │ architectural → email human, block
+                    ↓ after 2 rejections
+               NotificationService → email → human
+               GitHub: label needs-human-review, pause project queue
+```
+
+### Feedback ingestion
+- GitHub Discussions + issue comments → PdM daily scan
+- Review session notes in `docs/feedback/` → PdM reads on schedule
+- PdM proactive: reads roadmap + closed issues → identifies gaps autonomously
+
+### Notification triggers (email only — Discord-ready interface)
+- AVA exhausts all retries → escalation email
+- `risk_level = architectural` PR created → human-review email + GitHub label
+- NOT triggered on every AVA rejection
+
+---
+
 ## Progress Tracker
 
 | Phase | Status | Notes |
@@ -267,4 +314,10 @@ Task (scoped to a Project)
 | Phase 2b: Project + Git + Dispatcher | ✅ Done | 18/18 tests; multi-repo, worktrees, task queue |
 | Phase 2c: MCP Tool Integration | ✅ Done | 28/28 tests; PR #8; Closes #7 |
 | Phase 3: Persistence | ✅ Done | 28/28 tests; PR #9; Closes #5 |
-| Phase 4: API | ⏳ Pending | FastAPI, project + task endpoints |
+| Phase 4: API | ✅ Done | 36/36 tests; PR #10; Closes #6 |
+| Phase 5: NotificationService | ⏳ Pending | issue #11 |
+| Phase 6: Scheduler + Issue Poller | ⏳ Pending | issue #12 |
+| Phase 7: Task DAG + GitHub sub-issues | ⏳ Pending | issue #13 |
+| Phase 8: Two-level LangGraph | ⏳ Pending | issue #14 |
+| Phase 9: AVA CI gate + auto-merge | ⏳ Pending | issue #15 |
+| Phase 10: PjM priority queue | ⏳ Pending | issue #16 |
