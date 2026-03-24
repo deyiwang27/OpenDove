@@ -48,4 +48,5 @@ class TaskResponse(BaseModel):
     max_retries: int
     artifact: str
     branch_name: str
+    github_issue_number: int | None
     validation_result: ValidationResultResponse | None

@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     gemini_api_key: str = ""
+    github_token: str = ""
+    github_issue_label: str = "opendove"
+    github_sync_interval_minutes: int = 5
 
     # Notifications
     notify_email_to: str = ""

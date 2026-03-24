@@ -36,4 +36,5 @@ class Task(BaseModel):
     retry_count: int = 0
     max_retries: int = 3
     artifact: str = ""
+    github_issue_number: int | None = None
     validation_result: ValidationResult | None = None
