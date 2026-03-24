@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from opendove.agents.base import BaseAgent
 from opendove.models.task import Role, Task, TaskStatus
 from opendove.validation.contracts import ValidationDecision, ValidationResult
 
@@ -13,6 +14,7 @@ class GraphState(TypedDict):
     task: Task
     messages: list[str]
     retry_count: int
+    worktree_path: NotRequired[str]
 
 
 GraphNode = Callable[[GraphState], GraphState]
@@ -26,6 +28,7 @@ def product_manager_node(state: GraphState) -> GraphState:
         **state,
         "task": task,
         "messages": [*state["messages"], "ProductManager: spec locked."],
+        "worktree_path": state.get("worktree_path", ""),
     }
 
 
@@ -39,6 +42,7 @@ def project_manager_node(state: GraphState) -> GraphState:
             *state["messages"],
             f"ProjectManager: task assigned, max_retries={task.max_retries}.",
         ],
+        "worktree_path": state.get("worktree_path", ""),
     }
 
 
@@ -46,6 +50,7 @@ def lead_architect_node(state: GraphState) -> GraphState:
     return {
         **state,
         "messages": [*state["messages"], "Architect: approach defined."],
+        "worktree_path": state.get("worktree_path", ""),
     }
 
 
@@ -58,6 +63,7 @@ def developer_node(state: GraphState) -> GraphState:
         **state,
         "task": task,
         "messages": [*state["messages"], "Developer: implementation complete."],
+        "worktree_path": state.get("worktree_path", ""),
     }
 
 
@@ -94,6 +100,7 @@ def ava_node(state: GraphState) -> GraphState:
         "task": task,
         "retry_count": retry_count,
         "messages": [*state["messages"], f"AVA: {decision.value}."],
+        "worktree_path": state.get("worktree_path", ""),
     }
 
 
@@ -121,15 +128,35 @@ def build_orchestration_summary() -> str:
     return f"OpenDove orchestration path: {path}"
 
 
-def build_graph(developer_node_fn: GraphNode | None = None) -> Any:
+def build_graph(
+    developer_node_fn: GraphNode | None = None,
+    product_manager_agent: BaseAgent | None = None,
+    project_manager_agent: BaseAgent | None = None,
+    lead_architect_agent: BaseAgent | None = None,
+    developer_agent: BaseAgent | None = None,
+    ava_agent: BaseAgent | None = None,
+) -> Any:
     graph_builder = StateGraph(GraphState)
     effective_developer_node = developer_node_fn or developer_node
+    effective_product_manager_node = (
+        product_manager_agent.run if product_manager_agent is not None else product_manager_node
+    )
+    effective_project_manager_node = (
+        project_manager_agent.run if project_manager_agent is not None else project_manager_node
+    )
+    effective_lead_architect_node = (
+        lead_architect_agent.run if lead_architect_agent is not None else lead_architect_node
+    )
+    effective_developer_node = (
+        developer_agent.run if developer_agent is not None else effective_developer_node
+    )
+    effective_ava_node = ava_agent.run if ava_agent is not None else ava_node
 
-    graph_builder.add_node("product_manager_node", product_manager_node)
-    graph_builder.add_node("project_manager_node", project_manager_node)
-    graph_builder.add_node("lead_architect_node", lead_architect_node)
+    graph_builder.add_node("product_manager_node", effective_product_manager_node)
+    graph_builder.add_node("project_manager_node", effective_project_manager_node)
+    graph_builder.add_node("lead_architect_node", effective_lead_architect_node)
     graph_builder.add_node("developer_node", effective_developer_node)
-    graph_builder.add_node("ava_node", ava_node)
+    graph_builder.add_node("ava_node", effective_ava_node)
 
     graph_builder.add_edge(START, "product_manager_node")
     graph_builder.add_edge("product_manager_node", "project_manager_node")
