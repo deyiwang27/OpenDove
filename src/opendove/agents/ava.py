@@ -10,6 +10,7 @@ class AVAAgent(BaseAgent):
     def run(self, state: GraphState) -> GraphState:
         task = state["task"]
         retry_count = state["retry_count"]
+        architect_retry_count = state.get("architect_retry_count", 0)
 
         if retry_count >= task.max_retries:
             task.status = TaskStatus.ESCALATED
@@ -21,6 +22,10 @@ class AVAAgent(BaseAgent):
             task.status = TaskStatus.REJECTED
             decision = ValidationDecision.REJECT
             rationale = "No artifact produced."
+        elif architect_retry_count >= 2:
+            task.status = TaskStatus.ESCALATED
+            decision = ValidationDecision.ESCALATE
+            rationale = "Architect retry limit reached."
         else:
             task.status = TaskStatus.APPROVED
             decision = ValidationDecision.APPROVE
@@ -39,6 +44,7 @@ class AVAAgent(BaseAgent):
             **state,
             "task": task,
             "retry_count": retry_count,
+            "architect_retry_count": architect_retry_count,
             "messages": [*state["messages"], f"AVA: {decision.value}."],
             "worktree_path": state.get("worktree_path", ""),
         }
