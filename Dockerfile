@@ -10,8 +10,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Copy dependency manifests only — maximises layer cache reuse
 COPY pyproject.toml uv.lock* ./
 
-# Install all runtime deps (no dev extras) into the venv
-RUN uv sync --no-dev --frozen
+# Install third-party runtime deps only; project source is copied later
+RUN uv sync --no-dev --frozen --no-install-project
 
 # ── Stage 2: application image ───────────────────────────────────────────────
 FROM python:3.12-slim AS app
@@ -28,6 +28,9 @@ COPY --from=deps /app/.venv /app/.venv
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY pyproject.toml uv.lock* alembic.ini* ./
+
+# Install the local project now that src/ is present
+RUN uv sync --no-dev --frozen
 
 # Activate the venv for all subsequent RUN / CMD invocations
 ENV PATH="/app/.venv/bin:$PATH" \

@@ -9,6 +9,7 @@ from opendove.api.dependencies import (
     get_project_store,
     get_task_store,
     register_project_sync_job,
+    register_worker_job,
 )
 from opendove.state.memory_store import InMemoryTaskStore
 from opendove.api.schemas import (
@@ -99,6 +100,7 @@ def register_project(
     project = project.model_copy(update={"local_path": _build_project_local_path(project.id)})
     stored_project = dispatcher.register_project(project)
     register_project_sync_job(stored_project)
+    register_worker_job()
     return _to_project_response(stored_project)
 
 

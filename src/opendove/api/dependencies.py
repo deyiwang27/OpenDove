@@ -5,11 +5,14 @@ from functools import partial
 from urllib.parse import urlparse
 from uuid import UUID
 
+from opendove.agents.agent_factory import build_all_agents
 from opendove.config import settings
 from opendove.github.client import GitHubClient
 from opendove.models.project import Project
 from opendove.models.task import Task
 from opendove.orchestration.dispatcher import ProjectDispatcher
+from opendove.orchestration.task_runner import TaskRunner
+from opendove.orchestration.worker import TaskWorker
 from opendove.scheduler.issue_syncer import IssueSyncer
 from opendove.scheduler.scheduler import OpenDoveScheduler
 from opendove.state.memory_project_store import InMemoryProjectStore
@@ -21,6 +24,19 @@ _task_store = InMemoryTaskStore()
 _project_store = InMemoryProjectStore()
 _dispatcher = ProjectDispatcher(project_store=_project_store, task_store=_task_store)
 _scheduler = OpenDoveScheduler()
+
+
+def _build_worker() -> TaskWorker:
+    agents = build_all_agents(settings)
+    runner = TaskRunner(
+        task_store=_task_store,
+        dispatcher=_dispatcher,
+        **agents,
+    )
+    return TaskWorker(task_store=_task_store, task_runner=runner)
+
+
+_worker: TaskWorker | None = None
 
 
 def get_task_store() -> InMemoryTaskStore:
@@ -121,7 +137,24 @@ def register_project_sync_job(project: Project) -> None:
     )
 
 
+def register_worker_job() -> None:
+    _scheduler.add_seconds_job(run_worker_tick, seconds=30, job_id="task-worker")
+
+
 def reset_state() -> None:
+    global _worker
     _task_store._tasks.clear()
     _project_store._projects.clear()
     _scheduler.clear_jobs()
+    _worker = None
+
+
+def get_worker() -> TaskWorker:
+    global _worker
+    if _worker is None:
+        _worker = _build_worker()
+    return _worker
+
+
+def run_worker_tick() -> None:
+    get_worker().tick()
