@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import BaseModel
 
 from opendove.agents.base import BaseAgent, LLMCallError, _MAX_RETRIES
 from opendove.orchestration.graph import GraphState, build_graph
@@ -141,6 +142,66 @@ def test_call_with_retry_attempt_count_matches_max_retries() -> None:
             agent._call_with_retry(_always_fail)
 
     assert call_count == _MAX_RETRIES
+
+
+# ---------------------------------------------------------------------------
+# _call_llm_structured fallback tests
+# ---------------------------------------------------------------------------
+
+
+class StructuredResponse(BaseModel):
+    answer: str
+    score: int
+
+
+def test_call_llm_structured_falls_back_on_bad_request() -> None:
+    """When with_structured_output raises BadRequestError, falls back to plain JSON call."""
+    llm = MagicMock()
+    llm.with_structured_output.side_effect = Exception(
+        "400 - This response_format type is unavailable now"
+    )
+    llm.invoke.return_value = MagicMock(content='{"answer":"fallback","score":7}')
+
+    agent = ConcreteAgent(llm)
+
+    result = agent._call_llm_structured("Return the result.", StructuredResponse)
+
+    assert result == StructuredResponse(answer="fallback", score=7)
+    assert llm.with_structured_output.call_count == 1
+    llm.invoke.assert_called_once()
+    messages = llm.invoke.call_args.args[0]
+    assert messages[0].content == agent.system_prompt
+    assert "Return the result." in messages[1].content
+    assert "Respond with a valid JSON object only." in messages[1].content
+    assert "answer: str" in messages[1].content
+    assert "score: int" in messages[1].content
+
+
+def test_call_llm_structured_fallback_strips_markdown_fences() -> None:
+    """Fallback correctly strips ```json ... ``` fences before parsing."""
+    llm = MagicMock()
+    llm.with_structured_output.side_effect = Exception(
+        "400 - This response_format type is unavailable now"
+    )
+    llm.invoke.return_value = MagicMock(
+        content='```json\n{"answer":"react fallback","score":3}\n```'
+    )
+
+    agent = ConcreteAgent(llm)
+    agent._react_agent = MagicMock()
+    agent._react_agent.invoke.return_value = {
+        "messages": [MagicMock(content="Tool output summary")]
+    }
+
+    result = agent._call_llm_structured("Use tools first.", StructuredResponse)
+
+    assert result == StructuredResponse(answer="react fallback", score=3)
+    assert llm.with_structured_output.call_count == 1
+    llm.invoke.assert_called_once()
+    messages = llm.invoke.call_args.args[0]
+    assert messages[0].content == "Convert the following text into the required JSON structure."
+    assert "Tool output summary" in messages[1].content
+    assert "Respond with a valid JSON object only." in messages[1].content
 
 
 # ---------------------------------------------------------------------------
