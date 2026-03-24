@@ -74,6 +74,7 @@ class TaskORM(Base):
     github_pr_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
     validation_decision: Mapped[str | None] = mapped_column(String(50), nullable=True)
     validation_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    execution_log: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

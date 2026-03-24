@@ -1,10 +1,15 @@
 from __future__ import annotations
+
+import logging
 from uuid import UUID
-from opendove.models.task import Task
-from opendove.orchestration.graph import build_graph, GraphState
-from opendove.orchestration.dispatcher import ProjectDispatcher
-from opendove.state.store import TaskStore
+
 from opendove.agents.base import BaseAgent
+from opendove.models.task import Task
+from opendove.orchestration.dispatcher import ProjectDispatcher
+from opendove.orchestration.graph import GraphState, build_graph
+from opendove.state.store import TaskStore
+
+logger = logging.getLogger(__name__)
 
 
 class TaskRunner:
@@ -40,6 +45,11 @@ class TaskRunner:
 
     def run(self, task: Task, project_id: UUID, worktree_path: str = "") -> Task:
         """Execute the task through the inner graph and persist the result."""
+        logger.info(
+            "TaskRunner starting",
+            extra={"task_id": str(task.id), "project_id": str(project_id), "title": task.title},
+        )
+
         graph = build_graph(**self._agent_kwargs)
 
         initial_state: GraphState = {
@@ -52,6 +62,21 @@ class TaskRunner:
 
         result_state = graph.invoke(initial_state)
         final_task: Task = result_state["task"]
+        execution_log: list[str] = result_state.get("messages", [])
+
+        # Attach execution log to the task before persisting
+        final_task = final_task.model_copy(update={"execution_log": execution_log})
+
+        logger.info(
+            "TaskRunner finished",
+            extra={
+                "task_id": str(task.id),
+                "project_id": str(project_id),
+                "final_status": final_task.status.value,
+                "retry_count": final_task.retry_count,
+                "log_entries": len(execution_log),
+            },
+        )
 
         # Persist the final task state
         persisted = self._task_store.update_task(final_task)

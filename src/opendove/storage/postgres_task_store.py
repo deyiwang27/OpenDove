@@ -40,6 +40,7 @@ def _orm_to_task(orm: TaskORM) -> Task:
         parent_issue_number=orm.parent_issue_number,
         github_pr_url=orm.github_pr_url,
         validation_result=validation_result,
+        execution_log=list(json.loads(orm.execution_log or "[]")),
     )
 
 
@@ -69,6 +70,7 @@ def _task_to_orm(task: Task) -> TaskORM:
         github_pr_url=task.github_pr_url,
         validation_decision=validation_decision,
         validation_rationale=validation_rationale,
+        execution_log=json.dumps(task.execution_log),
     )
 
 
@@ -108,6 +110,7 @@ class PostgresTaskStore(TaskStore):
             orm_task.github_pr_url = flattened_task.github_pr_url
             orm_task.validation_decision = flattened_task.validation_decision
             orm_task.validation_rationale = flattened_task.validation_rationale
+            orm_task.execution_log = flattened_task.execution_log
 
             session.commit()
             session.refresh(orm_task)

@@ -43,7 +43,20 @@ def _to_task_response(task: Task) -> TaskResponse:
         parent_issue_number=task.parent_issue_number,
         github_pr_url=task.github_pr_url,
         validation_result=_to_validation_result_response(task.validation_result),
+        execution_log=task.execution_log,
     )
+
+
+@router.get("/{task_id}/logs", response_model=list[str])
+def get_task_logs(
+    task_id: UUID,
+    task_store: InMemoryTaskStore = Depends(get_task_store),
+) -> list[str]:
+    """Return the execution log for a task."""
+    task = task_store.get_task(str(task_id))
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task.execution_log
 
 
 @router.get("/{task_id}", response_model=TaskResponse)

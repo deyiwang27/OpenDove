@@ -325,3 +325,4 @@ Developer ──→ Architect review ──→ PR creation ──→ AVA
 | Phase 12: Docker Compose + runbook | ✅ Done | PR #26; Closes #25 |
 | Phase 13: TaskRunner + integration tests | ✅ Done | 101/101 tests; PR #28; Closes #27 |
 | Phase 14: CLI | ✅ Done | 115/115 tests; PR #30; Closes #29 |
+| Phase 15: Observability | ✅ Done | 119/119 tests; PR #32; Closes #31 |

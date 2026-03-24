@@ -59,3 +59,4 @@ class TaskResponse(BaseModel):
     parent_issue_number: int | None
     github_pr_url: str
     validation_result: ValidationResultResponse | None
+    execution_log: list[str] = Field(default_factory=list)
