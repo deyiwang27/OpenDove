@@ -36,6 +36,7 @@ def _to_task_response(task: Task) -> TaskResponse:
         max_retries=task.max_retries,
         artifact=task.artifact,
         branch_name=task.branch_name,
+        github_issue_number=task.github_issue_number,
         validation_result=_to_validation_result_response(task.validation_result),
     )
 

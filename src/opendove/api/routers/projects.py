@@ -3,7 +3,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from opendove.api.dependencies import get_dispatcher, get_project_store
+from opendove.api.dependencies import (
+    get_dispatcher,
+    get_project_issue_syncer,
+    get_project_store,
+    register_project_sync_job,
+)
 from opendove.api.schemas import (
     ProjectResponse,
     RegisterProjectRequest,
@@ -15,6 +20,7 @@ from opendove.config import settings
 from opendove.models.project import Project
 from opendove.models.task import Task
 from opendove.orchestration.dispatcher import ProjectDispatcher
+from opendove.scheduler.issue_syncer import IssueSyncer
 from opendove.state.memory_project_store import InMemoryProjectStore
 from opendove.validation.contracts import ValidationResult
 
@@ -58,6 +64,7 @@ def _to_task_response(task: Task) -> TaskResponse:
         max_retries=task.max_retries,
         artifact=task.artifact,
         branch_name=task.branch_name,
+        github_issue_number=task.github_issue_number,
         validation_result=_to_validation_result_response(task.validation_result),
     )
 
@@ -76,6 +83,7 @@ def register_project(
     )
     project = project.model_copy(update={"local_path": _build_project_local_path(project.id)})
     stored_project = dispatcher.register_project(project)
+    register_project_sync_job(stored_project)
     return _to_project_response(stored_project)
 
 
@@ -120,3 +128,23 @@ def submit_task(
         raise HTTPException(status_code=404, detail="Project not found") from exc
 
     return _to_task_response(created_task)
+
+
+@router.post("/{project_id}/sync", response_model=list[TaskResponse], status_code=200)
+def sync_project(
+    project_id: UUID,
+    project_store: InMemoryProjectStore = Depends(get_project_store),
+    issue_syncer: IssueSyncer | None = Depends(get_project_issue_syncer),
+) -> list[TaskResponse]:
+    """Manually trigger GitHub issue sync for a project."""
+    project = project_store.get_project(str(project_id))
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if not settings.github_token:
+        return []
+
+    if issue_syncer is None:
+        return []
+
+    return [_to_task_response(task) for task in issue_syncer.sync(project_id)]
