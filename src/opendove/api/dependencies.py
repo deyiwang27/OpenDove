@@ -33,7 +33,7 @@ def _build_worker() -> TaskWorker:
         dispatcher=_dispatcher,
         **agents,
     )
-    return TaskWorker(task_store=_task_store, task_runner=runner)
+    return TaskWorker(task_store=_task_store, task_runner=runner, project_store=_project_store)
 
 
 _worker: TaskWorker | None = None

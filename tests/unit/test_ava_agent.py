@@ -49,14 +49,14 @@ def test_ava_approves_and_merges_low_risk() -> None:
     )
     state = _build_state(_build_task())
 
-    with patch("opendove.agents.ava.check_docs_updated", return_value=(True, "Docs updated.")):
+    with patch("opendove.agents.ava.check_files_changed", return_value=(True, "Files were modified.")):
         result = agent.run(state)
 
     task = result["task"]
     assert task.status is TaskStatus.APPROVED
     assert task.validation_result is not None
     assert task.validation_result.decision is ValidationDecision.APPROVE
-    assert task.validation_result.checks == ["ci", "docs", "requirements"]
+    assert task.validation_result.checks == ["ci", "files", "requirements"]
     github_client.get_ci_status.assert_called_once_with(123)
     github_client.merge_pr.assert_called_once_with(123, merge_message="Auto-merge: Phase 9 validation")
     notification_service.notify.assert_not_called()
@@ -73,7 +73,7 @@ def test_ava_rejects_when_ci_fails() -> None:
     )
     state = _build_state(_build_task())
 
-    with patch("opendove.agents.ava.check_docs_updated", return_value=(True, "Docs updated.")):
+    with patch("opendove.agents.ava.check_files_changed", return_value=(True, "Files were modified.")):
         result = agent.run(state)
 
     task = result["task"]
@@ -85,7 +85,7 @@ def test_ava_rejects_when_ci_fails() -> None:
     notification_service.notify.assert_not_called()
 
 
-def test_ava_rejects_when_no_docs_updated() -> None:
+def test_ava_rejects_when_no_files_changed() -> None:
     agent = AVAAgent(llm=FakeListChatModel(responses=["unused"]))
     state = _build_state(_build_task(github_pr_url=""), worktree_path="")
 
@@ -94,7 +94,7 @@ def test_ava_rejects_when_no_docs_updated() -> None:
     task = result["task"]
     assert task.status is TaskStatus.REJECTED
     assert task.validation_result is not None
-    assert "docs" in task.validation_result.rationale.lower()
+    assert "file" in task.validation_result.rationale.lower()
     assert result["retry_count"] == 1
 
 
@@ -109,14 +109,14 @@ def test_ava_escalates_architectural_and_notifies() -> None:
     )
     state = _build_state(_build_task(risk_level="architectural"))
 
-    with patch("opendove.agents.ava.check_docs_updated", return_value=(True, "Docs updated.")):
+    with patch("opendove.agents.ava.check_files_changed", return_value=(True, "Files were modified.")):
         result = agent.run(state)
 
     task = result["task"]
     assert task.status is TaskStatus.ESCALATED
     assert task.validation_result is not None
     assert task.validation_result.decision is ValidationDecision.ESCALATE
-    assert task.validation_result.checks == ["ci", "docs", "requirements"]
+    assert task.validation_result.checks == ["ci", "files", "requirements"]
     github_client.request_human_review.assert_called_once_with(
         123, "Architectural change requires human review before merge."
     )
@@ -159,12 +159,12 @@ def test_ava_no_merge_when_no_github_client() -> None:
     )
     state = _build_state(_build_task(github_pr_url=""))
 
-    with patch("opendove.agents.ava.check_docs_updated", return_value=(True, "Docs updated.")):
+    with patch("opendove.agents.ava.check_files_changed", return_value=(True, "Files were modified.")):
         result = agent.run(state)
 
     task = result["task"]
     assert task.status is TaskStatus.APPROVED
     assert task.validation_result is not None
     assert task.validation_result.decision is ValidationDecision.APPROVE
-    assert task.validation_result.checks == ["ci", "docs", "requirements"]
+    assert task.validation_result.checks == ["ci", "files", "requirements"]
     notification_service.notify.assert_not_called()
