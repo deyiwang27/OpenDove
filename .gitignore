@@ -9,3 +9,8 @@ build/
 *.egg-info/
 .DS_Store
 
+# OpenDove runtime files (session transcripts, architect briefs)
+# Design docs (WORKFLOW.md, PHASE*.md) are committed and excluded here
+.opendove/sessions/
+.opendove/briefs/
+
