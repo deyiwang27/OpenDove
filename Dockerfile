@@ -21,6 +21,8 @@ WORKDIR /app
 # uv binary needed at runtime for `uv run` invocations (e.g. migrations)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 # Copy venv built in stage 1
 COPY --from=deps /app/.venv /app/.venv
 
