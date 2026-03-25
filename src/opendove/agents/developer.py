@@ -4,6 +4,7 @@ import logging
 
 from opendove.agents.base import BaseAgent
 from opendove.agents.schemas import DeveloperOutput
+from opendove.agents.tools import BashTool, GlobTool, GrepTool, ReadFileTool, WriteFileTool
 from opendove.models.task import TaskStatus
 from opendove.orchestration.graph import GraphState
 
@@ -34,6 +35,14 @@ running tests. Use them. Always run the tests before declaring work complete.
 
 class DeveloperAgent(BaseAgent):
     DEFAULT_SYSTEM_PROMPT: str = _SYSTEM_PROMPT
+
+    def __init__(self, llm, system_prompt: str = _SYSTEM_PROMPT, **kwargs) -> None:
+        super().__init__(
+            llm=llm,
+            system_prompt=system_prompt,
+            tools=[ReadFileTool(), GlobTool(), GrepTool(), WriteFileTool(), BashTool()],
+            **kwargs,
+        )
 
     def run(self, state: GraphState) -> GraphState:
         task = state["task"]

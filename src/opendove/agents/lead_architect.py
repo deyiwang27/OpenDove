@@ -4,6 +4,7 @@ import logging
 
 from opendove.agents.base import BaseAgent
 from opendove.agents.schemas import ArchitectReviewOutput, LeadArchitectOutput
+from opendove.agents.tools import GlobTool, GrepTool, ReadFileTool
 from opendove.orchestration.graph import GraphState
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,14 @@ Rules:
 
 class LeadArchitectAgent(BaseAgent):
     DEFAULT_SYSTEM_PROMPT: str = _SYSTEM_PROMPT
+
+    def __init__(self, llm, system_prompt: str = _SYSTEM_PROMPT, **kwargs) -> None:
+        super().__init__(
+            llm=llm,
+            system_prompt=system_prompt,
+            tools=[ReadFileTool(), GlobTool(), GrepTool()],
+            **kwargs,
+        )
 
     def run(self, state: GraphState) -> GraphState:
         task = state["task"]
