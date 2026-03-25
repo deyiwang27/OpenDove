@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from uuid import UUID
 
+from opendove.config import settings
 from opendove.git.manager import GitManager
 from opendove.models.task import TaskStatus
 from opendove.orchestration.task_runner import TaskRunner
@@ -76,7 +77,7 @@ class TaskWorker:
 
             if not repo_path.exists():
                 logger.info("Worker: cloning %s -> %s", project.repo_url, repo_path)
-                GitManager.clone(project.repo_url, repo_path)
+                GitManager.clone(project.repo_url, repo_path, github_token=settings.github_token or "")
 
             branch_name = f"feat/task-{task_id_str[:8]}"
             logger.info("Worker: creating worktree at %s (branch %s)", worktree_path, branch_name)
@@ -91,10 +92,8 @@ class TaskWorker:
 
             if result.status.value == "approved":
                 logger.info("Worker: committing and pushing worktree %s", worktree_path)
-                GitManager.commit_and_push(worktree_path, f"feat: {task.title}")
+                GitManager.commit_and_push(worktree_path, f"feat: {task.title}", github_token=settings.github_token or "")
                 try:
-                    from opendove.config import settings
-
                     pr_url = GitManager.create_pull_request(
                         repo_url=project.repo_url,
                         branch=branch_name,
