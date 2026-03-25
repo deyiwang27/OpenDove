@@ -59,7 +59,10 @@ class GitManager:
                 capture_output=True, text=True,
             )
             original_url = url_result.stdout.strip()
-            authed_url = original_url.replace("https://", f"https://x-access-token:{github_token}@")
+            # Strip any existing credentials before injecting the token
+            import re
+            clean_url = re.sub(r"https://[^@]*@", "https://", original_url)
+            authed_url = clean_url.replace("https://", f"https://x-access-token:{github_token}@", 1)
             subprocess.run(
                 ["git", "-C", str(worktree_path), "remote", "set-url", remote, authed_url], check=True
             )

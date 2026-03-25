@@ -7,9 +7,18 @@ before they touch `GraphState`.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+
+
+def _normalise_risk_level(v: object) -> object:
+    if isinstance(v, str):
+        return v.lower()
+    return v
+
+
+RiskLevel = Annotated[Literal["low", "architectural"], BeforeValidator(_normalise_risk_level)]
 
 
 class ProductManagerOutput(BaseModel):
@@ -65,7 +74,7 @@ class LeadArchitectOutput(BaseModel):
             "(4) testing approach."
         )
     )
-    risk_level: Literal["low", "architectural"] = Field(
+    risk_level: RiskLevel = Field(
         description=(
             "Use 'architectural' when the change affects: core interfaces, "
             "database schema, public API contracts, or cross-cutting concerns. "
