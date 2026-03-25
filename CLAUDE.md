@@ -16,4 +16,12 @@ When fixing bugs, verify the root cause before implementing. For async/concurren
 
 ## Testing & CI
 
-This project uses Python as the primary language. Always follow existing project conventions for imports, type hints, and test structure. Run the full CI pipeline (`pytest`) after changes to catch env/config mismatches.
+This project uses Python as the primary language. Always follow existing project conventions for imports, type hints, and test structure.
+
+Always delegate test runs to CodeX MCP (`mcp__codex__codex`). Do not run `pytest` directly — invoke it through CodeX so the run is logged and traceable. The test command is:
+
+```
+uv run pytest tests/ -x -q
+```
+
+Run the full suite after every change to catch env/config mismatches.
