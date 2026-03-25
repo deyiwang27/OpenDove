@@ -17,7 +17,7 @@ _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="opendove-worke
 
 
 class TaskWorker:
-    """Poll for IN_PROGRESS tasks and drive each through the agent pipeline."""
+    """Poll for QUEUED tasks and drive each through the agent pipeline."""
 
     def __init__(
         self,
@@ -32,12 +32,12 @@ class TaskWorker:
         self._lock = Lock()
 
     def tick(self) -> None:
-        """Pick up all IN_PROGRESS tasks and run each in the thread pool."""
-        tasks = [task for task in self._task_store.list_tasks() if task.status is TaskStatus.IN_PROGRESS]
+        """Pick up all QUEUED tasks and run each in the thread pool."""
+        tasks = [task for task in self._task_store.list_tasks() if task.status is TaskStatus.QUEUED]
         if not tasks:
             return
 
-        logger.info("Worker tick: %d task(s) in progress", len(tasks))
+        logger.info("Worker tick: %d task(s) queued", len(tasks))
         for task in tasks:
             project_id = task.project_id
             if project_id is None:
@@ -58,10 +58,13 @@ class TaskWorker:
         worktree_path = None
         try:
             task = self._task_store.get_task(task_id_str)
-            if task is None or task.status is not TaskStatus.IN_PROGRESS:
+            if task is None or task.status is not TaskStatus.QUEUED:
                 return
             if task.project_id is None:
                 return
+
+            task = task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
+            task = self._task_store.update_task(task)
 
             project = self._project_store.get_project(str(task.project_id))
             if project is None:

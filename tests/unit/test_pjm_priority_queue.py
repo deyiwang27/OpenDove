@@ -40,9 +40,9 @@ def test_p0_dequeued_before_p1() -> None:
     dispatcher, project_store, task_store = _make_dispatcher()
     project = dispatcher.register_project(_build_project())
 
-    # First task starts immediately (project is idle)
+    # First task is queued immediately (project is idle)
     anchor_task = dispatcher.submit_task(project.id, _build_task("anchor"))
-    assert anchor_task.status is TaskStatus.IN_PROGRESS
+    assert anchor_task.status is TaskStatus.QUEUED
 
     # Submit P1 task first, then P0 task — both go to queue
     p1_task = dispatcher.submit_task(project.id, _build_task("P1 task"))
@@ -59,7 +59,7 @@ def test_p0_dequeued_before_p1() -> None:
     next_task = dispatcher.on_task_complete(project.id, anchor_task.id)
     assert next_task is not None
     assert next_task.id == p0_task.id
-    assert next_task.status is TaskStatus.IN_PROGRESS
+    assert next_task.status is TaskStatus.QUEUED
 
 
 def test_p0_dequeued_before_p2() -> None:
@@ -67,7 +67,7 @@ def test_p0_dequeued_before_p2() -> None:
     project = dispatcher.register_project(_build_project())
 
     anchor_task = dispatcher.submit_task(project.id, _build_task("anchor"))
-    assert anchor_task.status is TaskStatus.IN_PROGRESS
+    assert anchor_task.status is TaskStatus.QUEUED
 
     dispatcher.submit_task(project.id, _build_task("P2 task"))
     p0_task = dispatcher.submit_task(project.id, _build_task("P0 task"))
@@ -79,16 +79,16 @@ def test_p0_dequeued_before_p2() -> None:
     next_task = dispatcher.on_task_complete(project.id, anchor_task.id)
     assert next_task is not None
     assert next_task.id == p0_task.id
-    assert next_task.status is TaskStatus.IN_PROGRESS
+    assert next_task.status is TaskStatus.QUEUED
 
 
 def test_paused_project_does_not_start_task_on_submit() -> None:
     dispatcher, project_store, task_store = _make_dispatcher()
     project = dispatcher.register_project(_build_project())
 
-    # Submit first task (starts immediately)
+    # Submit first task (queues immediately)
     first_task = dispatcher.submit_task(project.id, _build_task("first"))
-    assert first_task.status is TaskStatus.IN_PROGRESS
+    assert first_task.status is TaskStatus.QUEUED
 
     # Complete the task so project goes IDLE
     dispatcher.on_task_complete(project.id, first_task.id)
@@ -113,9 +113,9 @@ def test_paused_project_does_not_dequeue_on_complete() -> None:
     dispatcher, project_store, task_store = _make_dispatcher()
     project = dispatcher.register_project(_build_project())
 
-    # Start a task
+    # Queue a task
     first_task = dispatcher.submit_task(project.id, _build_task("first"))
-    assert first_task.status is TaskStatus.IN_PROGRESS
+    assert first_task.status is TaskStatus.QUEUED
 
     # Queue a second task
     second_task = dispatcher.submit_task(project.id, _build_task("second"))
@@ -155,11 +155,11 @@ def test_unpause_starts_next_eligible_task() -> None:
     assert stored is not None
     assert stored.status is ProjectStatus.IDLE
 
-    # Unpause — should immediately start the queued task
+    # Unpause — should immediately promote the queued task
     started = dispatcher.unpause_project(project.id)
     assert started is not None
     assert started.id == queued_task.id
-    assert started.status is TaskStatus.IN_PROGRESS
+    assert started.status is TaskStatus.QUEUED
 
     stored = project_store.get_project(str(project.id))
     assert stored is not None

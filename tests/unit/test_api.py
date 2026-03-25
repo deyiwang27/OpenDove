@@ -90,7 +90,7 @@ def test_submit_task_to_idle_project() -> None:
     body = response.json()
     assert body["project_id"] == project["id"]
     assert body["title"] == "Task 1"
-    assert body["status"] == TaskStatus.IN_PROGRESS.value
+    assert body["status"] == TaskStatus.QUEUED.value
 
 
 def test_submit_task_to_busy_project() -> None:
@@ -114,7 +114,7 @@ def test_submit_task_to_busy_project() -> None:
     )
 
     assert first_response.status_code == 202
-    assert first_response.json()["status"] == TaskStatus.IN_PROGRESS.value
+    assert first_response.json()["status"] == TaskStatus.QUEUED.value
     assert second_response.status_code == 202
     assert second_response.json()["status"] == TaskStatus.PENDING.value
 

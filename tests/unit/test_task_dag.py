@@ -28,13 +28,13 @@ def _build_task(title: str, depends_on: list[UUID] | None = None) -> Task:
     )
 
 
-def test_submit_task_with_no_deps_starts_immediately() -> None:
+def test_submit_task_with_no_deps_queues_immediately() -> None:
     dispatcher = ProjectDispatcher(InMemoryProjectStore(), InMemoryTaskStore())
     project = dispatcher.register_project(_build_project())
 
     task = dispatcher.submit_task(project.id, _build_task("Task A", []))
 
-    assert task.status is TaskStatus.IN_PROGRESS
+    assert task.status is TaskStatus.QUEUED
 
 
 def test_submit_task_with_unmet_deps_stays_pending() -> None:
@@ -46,7 +46,7 @@ def test_submit_task_with_unmet_deps_stays_pending() -> None:
     task_b = dispatcher.submit_task(project.id, _build_task("Task B", [task_a.id]))
     stored_project = project_store.get_project(str(project.id))
 
-    assert task_a.status is TaskStatus.IN_PROGRESS
+    assert task_a.status is TaskStatus.QUEUED
     assert task_b.status is TaskStatus.PENDING
     assert stored_project is not None
     assert stored_project.task_queue == [task_b.id]
@@ -95,7 +95,7 @@ def test_task_becomes_eligible_after_dependency_approved() -> None:
 
     assert next_task is not None
     assert next_task.id == task_b.id
-    assert next_task.status is TaskStatus.IN_PROGRESS
+    assert next_task.status is TaskStatus.QUEUED
     assert stored_project is not None
     assert stored_project.status is ProjectStatus.ACTIVE
     assert stored_project.active_task_id == task_b.id

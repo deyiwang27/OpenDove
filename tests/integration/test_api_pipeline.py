@@ -47,18 +47,18 @@ def _submit_task(project_id: str, title: str) -> dict:
     return response.json()
 
 
-def test_submit_task_sets_in_progress() -> None:
-    """Register a project, submit one task, GET /tasks/{id} shows IN_PROGRESS."""
+def test_submit_task_sets_queued() -> None:
+    """Register a project, submit one task, GET /tasks/{id} shows QUEUED."""
     project = _register_project()
     task = _submit_task(project["id"], "Task Alpha")
 
-    assert task["status"] == TaskStatus.IN_PROGRESS.value
+    assert task["status"] == TaskStatus.QUEUED.value
 
     response = client.get(f"/tasks/{task['id']}")
     assert response.status_code == 200
     body = response.json()
     assert body["id"] == task["id"]
-    assert body["status"] == TaskStatus.IN_PROGRESS.value
+    assert body["status"] == TaskStatus.QUEUED.value
     assert body["project_id"] == project["id"]
 
 
@@ -92,12 +92,12 @@ def test_task_logs_endpoint_404_unknown_task() -> None:
 
 
 def test_two_tasks_queue_correctly() -> None:
-    """Submit two tasks to same project; first is IN_PROGRESS, second is PENDING; queued_task_count=1."""
+    """Submit two tasks to same project; first is QUEUED, second is PENDING; queued_task_count=1."""
     project = _register_project()
     first = _submit_task(project["id"], "Task First")
     second = _submit_task(project["id"], "Task Second")
 
-    assert first["status"] == TaskStatus.IN_PROGRESS.value
+    assert first["status"] == TaskStatus.QUEUED.value
     assert second["status"] == TaskStatus.PENDING.value
 
     response = client.get(f"/projects/{project['id']}")

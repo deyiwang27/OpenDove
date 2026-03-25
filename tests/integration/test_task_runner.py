@@ -60,7 +60,7 @@ def test_runner_persists_approved_task() -> None:
         owner=Role.DEVELOPER,
     )
     submitted = dispatcher.submit_task(project.id, raw_task)
-    assert submitted.status == TaskStatus.IN_PROGRESS
+    assert submitted.status == TaskStatus.QUEUED
 
     result = runner.run(submitted, project.id)
 
