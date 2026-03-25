@@ -23,6 +23,10 @@ services:
     environment:
       # Override db URL to use the compose service name
       OPENDOVE_DATABASE_URL: postgresql+psycopg://opendove:opendove@db:5432/opendove
+      OPENDOVE_LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      OPENDOVE_LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      OPENDOVE_LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-opendove}
+      OPENDOVE_LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
     ports:
       - "8001:8000"
     depends_on:
