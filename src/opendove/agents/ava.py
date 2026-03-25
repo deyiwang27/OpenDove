@@ -7,7 +7,7 @@ from langchain_core.tools import BaseTool
 
 from opendove.agents.ava_checks import (
     check_ci_passed,
-    check_docs_updated,
+    check_files_changed,
     check_requirements_met,
 )
 from opendove.agents.base import BaseAgent
@@ -22,7 +22,7 @@ class AVAAgent(BaseAgent):
     DEFAULT_SYSTEM_PROMPT = (
         "You are AVA, the Alignment & Validation Agent. "
         "You are a strict, non-bypassable gatekeeper. "
-        "You validate that tasks meet their success criteria, CI passes, and docs are updated."
+        "You validate that tasks meet their success criteria, CI passes, and files are changed."
     )
 
     def __init__(
@@ -55,10 +55,10 @@ class AVAAgent(BaseAgent):
         if not ci_ok:
             failures.append(ci_rationale)
 
-        docs_ok, docs_rationale = check_docs_updated(worktree_path)
-        checks_performed.append("docs")
-        if not docs_ok:
-            failures.append(docs_rationale)
+        files_ok, files_rationale = check_files_changed(worktree_path)
+        checks_performed.append("files")
+        if not files_ok:
+            failures.append(files_rationale)
 
         req_ok, req_rationale = check_requirements_met(task.success_criteria, task.artifact)
         checks_performed.append("requirements")

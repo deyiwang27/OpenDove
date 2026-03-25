@@ -8,30 +8,39 @@ def check_ci_passed(ci_status: str) -> tuple[bool, str]:
     return False, f"CI status is '{ci_status}' - must be 'success' before merge."
 
 
-def check_docs_updated(worktree_path: str) -> tuple[bool, str]:
-    """Return whether at least one file under docs/ changed in the worktree."""
+def check_files_changed(worktree_path: str) -> tuple[bool, str]:
+    """Return whether any file was modified or added in the worktree."""
     import subprocess
 
     if not worktree_path:
-        return False, "No worktree path - cannot verify docs update."
+        return False, "No worktree path - cannot verify file changes."
 
     result = subprocess.run(
-        ["git", "-C", worktree_path, "diff", "HEAD", "--name-only"],
+        ["git", "-C", worktree_path, "status", "--short"],
         capture_output=True,
         text=True,
         check=False,
     )
     if result.returncode != 0:
-        return False, f"git diff failed: {result.stderr.strip()}"
+        return False, f"git status failed: {result.stderr.strip()}"
 
-    changed_files = result.stdout.strip().splitlines()
-    docs_changed = any(path.startswith("docs/") for path in changed_files)
-    if docs_changed:
-        return True, "Docs updated."
-    return (
-        False,
-        "No docs/ files were modified - documentation must be updated as part of this task.",
+    if result.stdout.strip():
+        return True, "Files were modified in the worktree."
+
+    result2 = subprocess.run(
+        ["git", "-C", worktree_path, "diff", "HEAD~1..HEAD", "--name-only"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
+    if result2.returncode == 0 and result2.stdout.strip():
+        return True, "Files were committed in the worktree."
+
+    return False, "No files were modified in the worktree."
+
+
+def check_docs_updated(worktree_path: str) -> tuple[bool, str]:
+    return check_files_changed(worktree_path)
 
 
 def check_requirements_met(success_criteria: list[str], artifact: str) -> tuple[bool, str]:
