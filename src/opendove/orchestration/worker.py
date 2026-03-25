@@ -92,6 +92,22 @@ class TaskWorker:
             if result.status.value == "approved":
                 logger.info("Worker: committing and pushing worktree %s", worktree_path)
                 GitManager.commit_and_push(worktree_path, f"feat: {task.title}")
+                try:
+                    from opendove.config import settings
+
+                    pr_url = GitManager.create_pull_request(
+                        repo_url=project.repo_url,
+                        branch=branch_name,
+                        title=f"feat: {task.title}",
+                        body=f"Automated PR by OpenDove\n\nTask: {task.intent}",
+                        base=project.default_branch,
+                        github_token=settings.github_token or "",
+                    )
+                    task = task.model_copy(update={"github_pr_url": pr_url})
+                    self._task_store.update_task(task)
+                    logger.info("Worker: PR created %s", pr_url)
+                except Exception as exc:
+                    logger.warning("Worker: failed to create PR: %s", exc)
         except Exception as exc:
             logger.exception("Worker: task %s failed: %s", task_id_str, exc)
         finally:
