@@ -54,5 +54,11 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_password: str = ""
 
+    # LangSmith tracing
+    langchain_tracing_v2: bool = False
+    langchain_api_key: str = ""
+    langchain_project: str = "opendove"
+    langchain_endpoint: str = "https://api.smith.langchain.com"
+
 
 settings = Settings()
