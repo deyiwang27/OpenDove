@@ -17,6 +17,7 @@ class Role(str, Enum):
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
+    QUEUED = "queued"
     IN_PROGRESS = "in_progress"
     AWAITING_VALIDATION = "awaiting_validation"
     APPROVED = "approved"

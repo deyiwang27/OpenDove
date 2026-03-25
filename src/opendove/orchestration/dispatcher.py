@@ -38,7 +38,7 @@ class ProjectDispatcher:
                 }
             )
             self.project_store.update_project(project)
-            active_task = created_task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
+            active_task = created_task.model_copy(update={"status": TaskStatus.QUEUED})
             return self.task_store.update_task(active_task)
 
         updated_queue = [*project.task_queue, created_task.id]
@@ -105,7 +105,7 @@ class ProjectDispatcher:
         )
         self.project_store.update_project(project)
 
-        next_task = next_task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
+        next_task = next_task.model_copy(update={"status": TaskStatus.QUEUED})
         return self.task_store.update_task(next_task)
 
     def prioritize_queue(self, project_id: UUID, priority_map: dict[UUID, int]) -> None:
@@ -155,7 +155,7 @@ class ProjectDispatcher:
                     }
                 )
                 self.project_store.update_project(project)
-                next_task = next_task.model_copy(update={"status": TaskStatus.IN_PROGRESS})
+                next_task = next_task.model_copy(update={"status": TaskStatus.QUEUED})
                 return self.task_store.update_task(next_task)
 
         return None

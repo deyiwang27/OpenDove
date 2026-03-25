@@ -27,7 +27,7 @@ def _build_task(title: str) -> Task:
     )
 
 
-def test_submit_task_to_idle_project_starts_immediately() -> None:
+def test_submit_task_to_idle_project_queues_immediately() -> None:
     project_store = InMemoryProjectStore()
     task_store = InMemoryTaskStore()
     dispatcher = ProjectDispatcher(project_store, task_store)
@@ -36,7 +36,7 @@ def test_submit_task_to_idle_project_starts_immediately() -> None:
     task = dispatcher.submit_task(project.id, _build_task("Task 1"))
     stored_project = project_store.get_project(str(project.id))
 
-    assert task.status is TaskStatus.IN_PROGRESS
+    assert task.status is TaskStatus.QUEUED
     assert task.project_id == project.id
     assert stored_project is not None
     assert stored_project.status is ProjectStatus.ACTIVE
@@ -54,7 +54,7 @@ def test_submit_task_to_busy_project_queues_it() -> None:
     second_task = dispatcher.submit_task(project.id, _build_task("Task 2"))
     stored_project = project_store.get_project(str(project.id))
 
-    assert first_task.status is TaskStatus.IN_PROGRESS
+    assert first_task.status is TaskStatus.QUEUED
     assert second_task.status is TaskStatus.PENDING
     assert stored_project is not None
     assert stored_project.active_task_id == first_task.id
@@ -94,7 +94,7 @@ def test_on_task_complete_dequeues_next_task() -> None:
 
     assert next_task is not None
     assert next_task.id == second_task.id
-    assert next_task.status is TaskStatus.IN_PROGRESS
+    assert next_task.status is TaskStatus.QUEUED
     assert stored_project is not None
     assert stored_project.status is ProjectStatus.ACTIVE
     assert stored_project.active_task_id == second_task.id
