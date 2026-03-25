@@ -52,3 +52,36 @@ class GitManager:
                 raise RuntimeError(
                     f"git command failed: {' '.join(cmd)}\n{result.stderr.strip()}"
                 )
+
+    @staticmethod
+    def create_pull_request(
+        repo_url: str,
+        branch: str,
+        title: str,
+        body: str = "",
+        base: str = "main",
+        github_token: str = "",
+    ) -> str:
+        """Create a GitHub PR and return the PR HTML URL."""
+        import re
+
+        import httpx
+
+        # Parse owner/repo from https://github.com/owner/repo.git
+        match = re.search(r"github\.com[:/](.+?)(?:\.git)?$", repo_url)
+        if not match:
+            raise ValueError(f"Cannot parse GitHub repo from URL: {repo_url}")
+        repo_path = match.group(1)
+
+        headers = {"Accept": "application/vnd.github+json"}
+        if github_token:
+            headers["Authorization"] = f"Bearer {github_token}"
+
+        resp = httpx.post(
+            f"https://api.github.com/repos/{repo_path}/pulls",
+            json={"title": title, "head": branch, "base": base, "body": body},
+            headers=headers,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()["html_url"]
