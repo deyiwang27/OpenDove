@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator
+from pydantic import BaseModel, BeforeValidator, Field
 
 
 def _normalise_risk_level(v: object) -> object:
@@ -19,8 +19,6 @@ def _normalise_risk_level(v: object) -> object:
 
 
 RiskLevel = Annotated[Literal["low", "architectural"], BeforeValidator(_normalise_risk_level)]
-
-from pydantic import BaseModel, Field
 
 
 class ProductManagerOutput(BaseModel):
