@@ -6,13 +6,15 @@ class GitManager:
     """Wraps git CLI operations for repo and worktree lifecycle."""
 
     @staticmethod
-    def clone(repo_url: str, target_path: Path) -> None:
+    def clone(repo_url: str, target_path: Path, github_token: str = "") -> None:
         """Clone repo_url into target_path. Raises RuntimeError on failure."""
         target_path.parent.mkdir(parents=True, exist_ok=True)
+        url = repo_url
+        if github_token and url.startswith("https://"):
+            url = url.replace("https://", f"https://x-access-token:{github_token}@")
         result = subprocess.run(
-            ["git", "clone", repo_url, str(target_path)],
-            capture_output=True,
-            text=True,
+            ["git", "clone", url, str(target_path)],
+            capture_output=True, text=True,
         )
         if result.returncode != 0:
             raise RuntimeError(f"git clone failed: {result.stderr.strip()}")
@@ -40,17 +42,39 @@ class GitManager:
         )
 
     @staticmethod
-    def commit_and_push(worktree_path: Path, message: str, remote: str = "origin") -> None:
+    def commit_and_push(worktree_path: Path, message: str, remote: str = "origin", github_token: str = "") -> None:
         """Stage all changes, commit, and push the current branch."""
         for cmd in [
             ["git", "-C", str(worktree_path), "add", "-A"],
             ["git", "-C", str(worktree_path), "commit", "--allow-empty", "-m", message],
-            ["git", "-C", str(worktree_path), "push", remote, "HEAD"],
         ]:
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                raise RuntimeError(
-                    f"git command failed: {' '.join(cmd)}\n{result.stderr.strip()}"
+                raise RuntimeError(f"git command failed: {' '.join(cmd)}\n{result.stderr.strip()}")
+
+        original_url = ""
+        if github_token:
+            url_result = subprocess.run(
+                ["git", "-C", str(worktree_path), "remote", "get-url", remote],
+                capture_output=True, text=True,
+            )
+            original_url = url_result.stdout.strip()
+            authed_url = original_url.replace("https://", f"https://x-access-token:{github_token}@")
+            subprocess.run(
+                ["git", "-C", str(worktree_path), "remote", "set-url", remote, authed_url], check=True
+            )
+
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(worktree_path), "push", remote, "HEAD"],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"git push failed: {result.stderr.strip()}")
+        finally:
+            if github_token and original_url:
+                subprocess.run(
+                    ["git", "-C", str(worktree_path), "remote", "set-url", remote, original_url]
                 )
 
     @staticmethod
